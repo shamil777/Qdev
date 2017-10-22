@@ -4,13 +4,13 @@ J3     ,JosType2,
 J4     ,JosType1,
 B1     ,SOURCE_BATTERY1,
 J2     ,JosType2,
-C1     ,CAP_NONPOLARIZED,
+C1     ,C1,
 
 *NET*
-*SIGNAL* Net_0
-J3.1 J2.2 
 *SIGNAL* Net_2
+J3.1 J2.2 
+*SIGNAL* Net_1
 J4.1 B1.POS J2.1 C1.2 
-*SIGNAL* Net_3
+*SIGNAL* Net_0
 J3.2 J4.2 B1.NEG C1.1 
 *END*

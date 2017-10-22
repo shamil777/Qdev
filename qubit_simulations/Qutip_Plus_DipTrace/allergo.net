@@ -1,0 +1,11 @@
+$PACKAGES
+! JosType2; J3
+! JosType1; J4
+! SOURCE_BATTERY1; B1
+! JosType2; J2
+! C1; C1
+$NETS
+Net_0;  J3.1 J2.2
+Net_1;  J4.1 B1.POS J2.1 C1.2
+Net_2;  J3.2 J4.2 B1.NEG C1.1
+$END

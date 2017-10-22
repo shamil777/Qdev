@@ -4,7 +4,7 @@ import networkx as nx
 class Element():
     def __init__(self, element_type, refDes, group_name=None ):
         if( group_name == None ):
-            group_name = RefDes
+            group_name = refDes
         self.element_type = element_type
         self.group_name = group_name
         self.refDes = refDes
@@ -91,15 +91,14 @@ def build_graph_from_netlist_PAD( file_rows ):
             
         net_id = row[1].split('_') 
         
-        # found row with net information (net == node of the graph)
+        # found row with net information (net is the node of the graph)
         if( net_id[0] == "Net" ):
-            graph.add_node( net_id[1] ) # adding net with corresponding number
-            
+            graph.add_node( int(net_id[1]) ) # adding net with corresponding number
             element_row = file_rows[i+1]
             for element in element_row[:-1]: # last element is empty due to DipTrace export...
                 refDes = element.split('.')[0]
                 i = refDes_list.index( refDes )
-                nets_list[i].append( net_id[1] )
+                nets_list[i].append( int(net_id[1]) )
     print( nets_list )
     for i,edge in enumerate(nets_list):
         graph.add_edge( *edge, element=elements[i] )
