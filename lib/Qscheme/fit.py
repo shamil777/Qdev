@@ -28,7 +28,7 @@ class Fit_Base:
         self.fixed_params_map = [i for i,x_marked in enumerate(params_marked) if x_marked[1] == 0]
         self.fixed_params = [params_marked[i][0] for i in self.fixed_params_map]
 
-        self.data_dir = "D:\\shamil_docs\\Qdev\\qubit_simulations\\Qutip&SymPy simulations of 3 junction Cshunted flux qbit based on 3\\Design v.1.0\\"
+        self.data_dir = "C:\\Users\\user\\Documents\\GitHub\\Qdev\\qubit_simulations\\Qutip&SymPy simulations of 3 junction Cshunted flux qbit based on 3\\Design v.1.0\\"
         self.data_files_names = ["E1E0WPD.csv","E2E0halfWPD.csv","E2E1WPD.csv"]
         self.data_names = [x.split('.')[0] for x in self.data_files_names]
         self.eigEngs_current_step_dict = {}
@@ -149,13 +149,13 @@ class Fit_Flux_Csh_3JJ(Fit_Base):
 
 if( __name__ == "__main__" ):
     alpha = 0.43 # ratio of the smaller and larger josephson junctions areas
-    E_C = 8.52975023e+00  # GHz, roughly corresponding to C = 4.5 fF
-    E_J = 1.23211027e+02 # GHz
+    E_C = 8.56735249e+00  # GHz, roughly corresponding to C = 4.5 fF
+    E_J = 1.22570055e+02 # GHz
     Csh = 10.0 # in units of C (C equals to larger josephson junctions capacitance)
     f = 0.5 # flux
     cooper_N = 15
-    x_alpha =  4.81798886e-02
-    x_beta = -1.63882964e+01
+    x_alpha =  4.84244299e-02
+    x_beta = -1.63358728e+01
     pts_N = 25
     
     params_marked = [[x_alpha,1], [x_beta,1], [E_C,1], [E_J,1],

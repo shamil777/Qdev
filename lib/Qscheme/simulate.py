@@ -9,6 +9,8 @@ import numpy as np
 import qutip as qp
 import itertools
 
+import matplotlib.pyplot as plt
+
 e = 1.6e-19 # electron charge SI
 hbar = 1.055e-34 # plank constant SI (this is \hbar)
 h = hbar*(2*np.pi)
@@ -224,3 +226,6 @@ def array_coupling_from_parameters_lists(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pt
         g.append( multiplier*(n1_op-n2_op).matrix_element(vec0.dag(),vec1) )
                  
     return np.array(g)
+
+def array_eins_full_from_parameters_product(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts):
+    pass
