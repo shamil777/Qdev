@@ -4,10 +4,6 @@ Created on Sat Oct 28 20:24:02 2017
 
 @author: user
 """
-
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "\\..\\" )
 #from sympy import *
 import csv
 import numpy as np
@@ -17,8 +13,6 @@ import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 from scipy.interpolate import interp1d
 from Qscheme.simulate import array_eins_from_params_product
-
-import itertools
 
 class Fit_Base:
     def __init__(self,params_marked):
