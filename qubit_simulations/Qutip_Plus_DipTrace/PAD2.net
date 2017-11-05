@@ -1,0 +1,19 @@
+*PADS-PCB*
+*PART*
+J3     ,JosType2,
+J4     ,JosType1,
+B1     ,SOURCE_BATTERY1,
+J1     ,JosType2,
+C1     ,C1,
+J2     ,JosType2,
+
+*NET*
+*SIGNAL* Net_2
+J1.1 J2.2 
+*SIGNAL* Net_3
+J4.1 B1.POS C1.2 J2.1 
+*SIGNAL* Net_1
+J3.1 J1.2 
+*SIGNAL* Net_0
+J3.2 J4.2 B1.NEG C1.1 
+*END*

@@ -2,12 +2,21 @@ import csv
 import re
 import networkx as nx
 
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "\\..\\" )
+
+from Qscheme.variables import Var,vars_from_symbols
+import Qscheme.SI as SI
+
 import sympy
 import numpy as np
+import qutip as qp
 from sympy import init_printing
 init_printing()
 
 from collections import OrderedDict
+
 
 class Element():
     def __init__(self, element_type, refDes, group_name, edge ):
@@ -20,9 +29,8 @@ class Element():
         self.node1 = edge[0]
         self.node2 = edge[1]
 
-        self.params = OrderedDict()        
+        self.params = []      
         self.subscript = None
-        self._init_symbols()
        
     def change_subscript(self,new_subscript):
         self.subscript = new_subscript
@@ -32,6 +40,9 @@ class Element():
         raise NotImplementedError
     
     def _update_symbols(self):
+        raise NotImplementedError
+        
+    def _connect_to_params_list(self):
         raise NotImplementedError
     
     def _Hc_symbol_cooperN(self):
@@ -45,6 +56,20 @@ class Element():
         
     def _Hj_symbol_phase(self):
         raise NotImplementedError
+        
+    def _Hc_num_cooperN(self, *ops):
+        raise NotImplementedError
+        
+    def _Hc_num_phase(self, *ops):
+        raise NotImplementedError
+    
+    def _Hj_num_cooperN(self, *ops):
+        raise NotImplementedError
+        
+    def _Hj_num_phase(self, *ops):
+        raise NotImplementedError
+        
+    
     
     def __eq__( self, Element2 ):
         if( self.RefDes == Element2.RefDes ):
@@ -56,66 +81,87 @@ class Element():
         return (not self.__eq__( Element2 ))
         
 class SIS_JJ( Element ):
-    def __init__(self, refDes, group_name,  edge, capacitance=4.5e-15, E_J = 38e9 ):     
-        self.C = None
-        self.Ej = None
-        self.f_ext = None
-        self.ext_flux_subscript = None
+    def __init__(self, refDes, group_name,  edge ):     
+        super( SIS_JJ,self ).__init__( "SIS_JJ", refDes, group_name, edge )
+        self.subscript = refDes
+        
+        # params with changable symbols
+        self.C = Var("C_{" + str(self.subscript) + "}")
+        self.Ej = Var("E_{" + str(self.subscript) + "}")
+        self.f_ext = Var("\\varphi_{" + str(self.refDes) + "}")        
+        self.params = [self.C,self.Ej,self.f_ext]
+        
+        # params with fixed symbols 
+        self.n1,self.n2 = vars_from_symbols( 
+                        sympy.symbols(      
+                                        ["\hat{n}_{"+str(self.node1) + "}",
+                                         "\hat{n}_{"+str(self.node2) + "}"],
+                                        commutative=False
+                                    ) 
+                        )
+        self.phi1_d,self.phi2_d = vars_from_symbols(
+                            sympy.symbols(
+                                        ["\dot{\hat{\\varphi}}_" + str(self.node1),
+                                         "\dot{\hat{\\varphi}}_" + str(self.node2)],
+                                         commutative=False
+                                         )
+                            )
+        self.phi1, self.phi2 = vars_from_symbols(
+                            sympy.symbols(
+                                        ["\hat{\\varphi}_{" + str(self.node1) + "}",
+                                         "\hat{\\varphi}_{" + str(self.node2) + "}"]
+                                        )
+                            )
+        
+        self.l1,self.l2,self.r1,self.r2 = vars_from_symbols(
+                            sympy.symbols(
+                                        ["\hat{b}_{"+str(self.node1) + "}",
+                                         "\hat{b}_{"+str(self.node2)+"}",
+                                         "\hat{b}^\dag_{"+str(self.node1) + "}",
+                                         "\hat{b}^\dag_{"+str(self.node2) + "}"],
+                                        commutative = False
+                                        )
+                            )        
+        
+        self.ext_flux_subscript = refDes
         
         self.flux_enabled = False
-        
-        super( SIS_JJ,self ).__init__( "SIS_JJ", refDes, group_name, edge )
-    
-    def _init_symbols(self):
-        if(self.subscript is None):
-            self.subscript = self.refDes
-        self.C = sympy.Symbol("C_{" + str(self.subscript) + "}")
-        self.Ej = sympy.Symbol("E_{" + str(self.subscript) + "}")        
-        self.f_ext = sympy.Symbol("\\varphi_{ext}")
-        self.params[self.C] = None
-        self.params[self.Ej] = None
-        self.params[self.f_ext] = None
     
     def _update_symbols(self):
-        Cj_val = self.params[self.C]
-        Ej_val = self.params[self.Ej]
-        f_ext_val = self.params[self.f_ext]
-        self.C = sympy.Symbol("C_{" + str(self.subscript) + "}")
-        self.Ej = sympy.Symbol("E_{" + str(self.subscript) + "}")        
-        self.f_ext = sympy.Symbol("\\varphi_{" + str(self.ext_flux_subscript) + "}")
-        self.params = OrderedDict()
-        self.params[self.C] = Cj_val
-        self.params[self.Ej] = Ej_val
-        self.params[self.f_ext] = f_ext_val
+        self.C.sym = sympy.Symbol("C_{" + str(self.subscript) + "}")
+        self.Ej.sym = sympy.Symbol("E_{" + str(self.subscript) + "}")        
+        self.f_ext.sym = sympy.Symbol("\\varphi_{" + str(self.ext_flux_subscript) + "}")
         
-    def change_subscript(self,new_subscript,new_flux_subscript="ext"):
-        self.ext_flux_subscript = new_flux_subscript
+    def change_subscript(self,new_subscript,new_flux_subscript=None):
+        if( new_flux_subscript != None ):
+            self.ext_flux_subscript = new_flux_subscript
         super(SIS_JJ,self).change_subscript(new_subscript)
+        
+    def _connect_to_params_list(self):
+        self.C = self.params[0]
+        self.Ej = self.params[1]
+        self.f_ext = self.params[2]
         
     def enable_ext_flux(self):
         self.flux_enabled = True
     
     def _Hc_symbol_phase(self):
-        phi1_d,phi2_d,hbar,e = sympy.symbols(("\dot{\hat{\\varphi}}_" + str(self.node1),
-                                             "\dot{\hat{\\varphi}}_" + str(self.node2),
-                                             "\hbar","e") )
-        C = self.C
+        phi1_d,phi2_d = self.phi1_d.sym,self.phi2_d.sym
+        C = self.C.sym
             
-        return C*hbar**2/(4*e**2)*(phi1_d - phi2_d)**2/2
+        return C*SI.hbar.sym**2/(4*SI.e.sym**2)*(phi1_d - phi2_d)**2/2
     
     def _Hc_symbol_cooperN(self):
-        n1,n2,e = sympy.symbols(["\hat{n}_{"+str(self.node1) + "}",
-                               "\hat{n}_{"+str(self.node2) + "}",
-                               "e"])
-        C = self.C
+        n1 = self.n1.sym
+        n2 = self.n2.sym
+        C = self.C.sym
             
-        return (n1-n2)**2*(4*e**2)/(2*C)
+        return (n1-n2)**2*(4*SI.e.sym**2)/(2*C)
     
     def _Hj_symbol_phase(self):
-        phi1, phi2 = sympy.symbols(["\hat{\\varphi}_{" + str(self.node1) + "}",
-                                    "\hat{\\varphi}_{" + str(self.node2) + "}"])
-        E_J = self.Ej
-        phi_ext = self.f_ext
+        phi1,phi2 = self.phi1.sym, self.phi2.sym
+        E_J = self.Ej.sym
+        phi_ext = self.f_ext.sym
             
         if( self.flux_enabled is True ):
             return -E_J*sympy.cos(phi1 - phi2 + 2*sympy.pi*phi_ext)
@@ -123,60 +169,101 @@ class SIS_JJ( Element ):
             return -E_J*sympy.cos(phi1 - phi2)
         
     def _Hj_symbol_cooperN(self):
-        l1,l2,r1,r2 = sympy.symbols( ["\hat{b}_{"+str(self.node1) + "}",
-                                 "\hat{b}_{"+str(self.node2)+"}",
-                                 "\hat{b}^\dag_{"+str(self.node1) + "}",
-                                 "\hat{b}^\dag_{"+str(self.node2) + "}"])
-        E_j = self.Ej
-        phi_ext = self.f_ext
+        l1,l2,r1,r2 = self.l1.sym,self.l2.sym,self.r1.sym,self.r2.sym
+        E_j = self.Ej.sym
+        phi_ext = self.f_ext.sym
         
         if( self.flux_enabled is True ):
             return -E_j*(l1*r2*sympy.exp(1j*2*sympy.pi*phi_ext) + r1*l2*sympy.exp(-1j*2*sympy.pi*phi_ext))/2    
         else:
             return -E_j*(l1*r2 + r1*l2)/2
         
+    def _Hj_num_cooperN(self,raising_ops,lowering_ops):        
+        node1 = self.node1
+        node2 = self.node2
+        Ej = self.Ej.val
+        Hj_num_cooperN = 0*raising_ops[0]
+        
+        exp = 1
+        if( self.flux_enabled == True ):
+            exp = np.exp(1j*2*np.pi*self.f_ext.val)
+        
+        if( self.node1 != 0 and self.node2 != 0 ):
+            Hj_num_cooperN += -Ej/2*(raising_ops[node1-1]*lowering_ops[node2-1]*exp \
+                                          + lowering_ops[node1-1]*raising_ops[node2-1]/exp)
+        else:
+            node = node1 + node2 # equals to nonzero node number
+            Hj_num_cooperN += -Ej/2*(lowering_ops[node-1]*exp \
+                                          + raising_ops[node-1]/exp)
+            
+        return Hj_num_cooperN
+
+        
         
         
 class Cap( Element ):
     def __init__(self, refDes, group_name, edge, capacitance=51e-15 ):                                        
-        self.C = None
-        
         super( Cap,self ).__init__( "Cap", refDes, group_name, edge )
-    
-    def _init_symbols(self):
-        if( self.subscript is None ):
-            self.subscript = str(self.node1) + str(self.node2)
-        self.C = sympy.Symbol("C_{" + str(self.subscript) + "}")
-        self.params[self.C] = None
+        
+        self.subscript = str(self.node1) + str(self.node2)
+        self.C = Var("C_{" + str(self.subscript) + "}")
+        self.params = [self.C]
+        
+        self.n1,self.n2 = vars_from_symbols( 
+                        sympy.symbols(      
+                                        ["\hat{n}_{"+str(self.node1) + "}",
+                                         "\hat{n}_{"+str(self.node2) + "}"],
+                                        commutative=False
+                                    ) 
+                        )
+        self.phi1_d,self.phi2_d = vars_from_symbols(
+                            sympy.symbols(
+                                        ["\dot{\hat{\\varphi}}_" + str(self.node1),
+                                         "\dot{\hat{\\varphi}}_" + str(self.node2)],
+                                         commutative=False
+                                         )
+                            )
+
+            
     
     def _update_symbols(self):
-        C_val = self.params[self.C]
-        self.C = sympy.Symbol("C_{" + str(self.subscript) + "}")
-        self.params[self.C] = C_val
+        self.C.sym = sympy.Symbol("C_{" + str(self.subscript) + "}")
+        
+    def _connect_to_params_list(self):
+        self.C = self.params[0]
     
     def _Hc_symbol_phase(self):
-        phi1_d,phi2_d,hbar,e = sympy.symbols(("\dot{\hat{\\varphi}}_" + str(self.node1),
-                                             "\dot{\hat{\\varphi}}_" + str(self.node2),
-                                             "\hbar","e") )
+        phi1_d,phi2_d = self.phi1_d.sym,self.phi2_d.sym
         
-        C = self.C
+        C = self.C.sym
             
-        return C*hbar**2/(4*e**2)*(phi1_d - phi2_d)**2/2
+        return C*SI.hbar.sym**2/(4*SI.e.sym**2)*(phi1_d - phi2_d)**2/2
     
     def _Hc_symbol_cooperN(self):
-        n1,n2,e = sympy.symbols(["\hat{n}_{"+str(self.node1) + "}",
-                               "\hat{n}_{"+str(self.node2) + "}",
-                               "e"])
+        n1,n2 = self.n1.sym,self.n2.sym
 
-        C = self.C
+        C = self.C.sym
             
-        return (n1-n2)**2*(4*e**2)/(2*C)
+        return (n1-n2)**2*(4*SI.e.sym**2)/(2*C)
     
     def _Hj_symbol_phase(self):
         return 0
     
     def _Hj_symbol_cooperN(self):
         return 0
+    
+    def _Hc_num_cooperN(self, *ops):
+        return 0
+        
+    def _Hc_num_phase(self, *ops):
+        return 0
+    
+    def _Hj_num_cooperN(self, *ops):
+        return 0
+        
+    def _Hj_num_phase(self, *ops):
+        return 0
+
         
 
 class Battery( Element ):
@@ -189,6 +276,9 @@ class Battery( Element ):
     def _update_symbols(self):
         pass
     
+    def _connect_to_params_list(self):
+        pass
+    
     def _Hc_symbol_phase(self):
         return 0
     
@@ -200,7 +290,18 @@ class Battery( Element ):
     
     def _Hj_symbol_cooperN(self):
         return 0
-		
+
+    def _Hc_num_cooperN(self, *ops):
+        return 0
+        
+    def _Hc_num_phase(self, *ops):
+        return 0
+    
+    def _Hj_num_cooperN(self, *ops):
+        return 0
+        
+    def _Hj_num_phase(self, *ops):
+        return 0
 
 def _get_refDes_groupNames_PADS( file_rows ):
     ''' 
@@ -258,9 +359,12 @@ def build_graph_from_netlist_PADS( file_rows ):
             graph.add_node( int(net_id[1]) ) # adding net with corresponding number
             element_row = file_rows[i+1]
             for element in element_row[:-1]: # last element is empty due to DipTrace export...
-                refDes = element.split('.')[0]
+                refDes,pinDesc = element.split('.')
                 i = refDes_list.index( refDes )
-                nets_list[i].append( int(net_id[1]) )
+                if( pinDesc == "NEG" ):
+                    nets_list[i].insert( 0,int(net_id[1]) )
+                else:
+                    nets_list[i].append( int(net_id[1]) )
     
     for i,edge in enumerate(nets_list):
         refDes = refDes_list[i]
