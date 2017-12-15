@@ -121,7 +121,7 @@ class SIS_JJ( Element ):
         # params with changable symbols
         self.C = Var("C_{" + str(self.subscript) + "}")
         self.Ej = Var("E_{" + str(self.subscript) + "}")
-        self.f_ext = Var("\\varphi_{" + str(self.refDes) + "}")        
+        self.f_ext = Var("\Phi_{" + str(self.refDes) + "}")        
         
         # grouping params into list
         self.params = [self.C,self.Ej,self.f_ext]            
@@ -132,7 +132,7 @@ class SIS_JJ( Element ):
     def _update_symbols(self):
         self.C.sym = sympy.Symbol("C_{" + str(self.subscript) + "}")
         self.Ej.sym = sympy.Symbol("E_{" + str(self.subscript) + "}")        
-        self.f_ext.sym = sympy.Symbol("\\varphi_{" + str(self.ext_flux_subscript) + "}")
+        self.f_ext.sym = sympy.Symbol("\Phi_{" + str(self.ext_flux_subscript) + "}")
     
     # rewritten in order to change flux_subscript
     def change_subscript(self,new_subscript,new_flux_subscript=None):

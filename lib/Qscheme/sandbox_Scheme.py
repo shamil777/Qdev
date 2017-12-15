@@ -7,6 +7,8 @@ import Qscheme.simulate.simulate as q
 import sympy
 import numpy as np
 
+import collections
+
 from sympy import init_printing
 init_printing()
 
@@ -44,7 +46,7 @@ if( __name__ == "__main__" ):
     
     
 
-    parameters = ["C_{J}","C_{J\\alpha}","C_{sh}","E_{J}","E_{J\\alpha}","\\varphi_{J4}"]
+    parameters = ["C_{J}","C_{J\\alpha}","C_{sh}","E_{J}","E_{J\\alpha}","\Phi_{J4}"]
     param_vals = [C_Jb,C_Ja,Csh,E_J,alpha*E_J,f_ext]    
     scheme.assign_values_to_parameters(parameters,param_vals)
     
@@ -52,7 +54,12 @@ if( __name__ == "__main__" ):
     display(scheme.Hj_sym_cooperN)
     display(scheme.C_matrix_sym)
     N_pts = 21
-
+    
+    mesh = collections.OrderedDict([["\Phi_{J4}",[0,1,0.1]],
+                                    ["lol",[-2,-1,0.1]] ])
+    print(mesh)
+    scheme.square_mesh_eins(mesh)
+    '''
     d1 = []
     f_ext_list = np.linspace(0.4,0.6,N_pts)
     for i,f_ext in enumerate(f_ext_list):
@@ -62,9 +69,9 @@ if( __name__ == "__main__" ):
         
         d1.append(Evals)
     d1 = np.array(d1)
-    q.plot_eigenergies_custom(d1,f_ext_list)
-    '''
-    '''
+    q.plot_eigenergies_custom(d1,f_ext_list)'''
+    
+
     #display(scheme.Hc_sym_cooperN)
     #display(scheme.Hj_sym_cooperN)
     #display(scheme.C_matrix_sym[0])  
