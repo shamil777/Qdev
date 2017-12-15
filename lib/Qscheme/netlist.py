@@ -26,6 +26,8 @@ class Element():
         self.group_name = group_name
         self.refDes = refDes
         
+        self.scheme = None
+        
         self.node1 = edge[0]
         self.node2 = edge[1]
 
@@ -91,38 +93,7 @@ class SIS_JJ( Element ):
         self.f_ext = Var("\\varphi_{" + str(self.refDes) + "}")        
         self.params = [self.C,self.Ej,self.f_ext]
         
-        # params with fixed symbols 
-        self.n1,self.n2 = vars_from_symbols( 
-                        sympy.symbols(      
-                                        ["\hat{n}_{"+str(self.node1) + "}",
-                                         "\hat{n}_{"+str(self.node2) + "}"],
-                                        commutative=False
-                                    ) 
-                        )
-        self.phi1_d,self.phi2_d = vars_from_symbols(
-                            sympy.symbols(
-                                        ["\dot{\hat{\\varphi}}_" + str(self.node1),
-                                         "\dot{\hat{\\varphi}}_" + str(self.node2)],
-                                         commutative=False
-                                         )
-                            )
-        self.phi1, self.phi2 = vars_from_symbols(
-                            sympy.symbols(
-                                        ["\hat{\\varphi}_{" + str(self.node1) + "}",
-                                         "\hat{\\varphi}_{" + str(self.node2) + "}"]
-                                        )
-                            )
-        
-        self.l1,self.l2,self.r1,self.r2 = vars_from_symbols(
-                            sympy.symbols(
-                                        ["\hat{b}_{"+str(self.node1) + "}",
-                                         "\hat{b}_{"+str(self.node2)+"}",
-                                         "\hat{b}^\dag_{"+str(self.node1) + "}",
-                                         "\hat{b}^\dag_{"+str(self.node2) + "}"],
-                                        commutative = False
-                                        )
-                            )        
-        
+        # params with fixed symbols                 
         self.ext_flux_subscript = refDes
         
         self.flux_enabled = False
@@ -146,20 +117,22 @@ class SIS_JJ( Element ):
         self.flux_enabled = True
     
     def _Hc_symbol_phase(self):
-        phi1_d,phi2_d = self.phi1_d.sym,self.phi2_d.sym
+        phi1_d = self.scheme.phi_d[self.node1].sym
+        phi2_d = self.scheme.phi_d[self.node2].sym
         C = self.C.sym
             
         return C*SI.hbar.sym**2/(4*SI.e.sym**2)*(phi1_d - phi2_d)**2/2
     
     def _Hc_symbol_cooperN(self):
-        n1 = self.n1.sym
-        n2 = self.n2.sym
+        n1 = self.scheme.n[self.node1].sym
+        n2 = self.scheme.n[self.node2].sym
         C = self.C.sym
             
         return (n1-n2)**2*(4*SI.e.sym**2)/(2*C)
     
     def _Hj_symbol_phase(self):
-        phi1,phi2 = self.phi1.sym, self.phi2.sym
+        phi1 = self.scheme.phi[self.node1].sym
+        phi2 = self.scheme.phi[self.node2].sym
         E_J = self.Ej.sym
         phi_ext = self.f_ext.sym
             
@@ -169,7 +142,11 @@ class SIS_JJ( Element ):
             return -E_J*sympy.cos(phi1 - phi2)
         
     def _Hj_symbol_cooperN(self):
-        l1,l2,r1,r2 = self.l1.sym,self.l2.sym,self.r1.sym,self.r2.sym
+        l1 = self.scheme.l_ops[self.node1].sym
+        l2 = self.scheme.l_ops[self.node2].sym
+        r1 = self.scheme.r_ops[self.node1].sym
+        r2 = self.scheme.r_ops[self.node2].sym
+        
         E_j = self.Ej.sym
         phi_ext = self.f_ext.sym
         
@@ -178,24 +155,22 @@ class SIS_JJ( Element ):
         else:
             return -E_j*(l1*r2 + r1*l2)/2
         
-    def _Hj_num_cooperN(self,raising_ops,lowering_ops):        
-        node1 = self.node1
-        node2 = self.node2
+    def _Hj_num_cooperN(self):      
         Ej = self.Ej.val
-        Hj_num_cooperN = 0*raising_ops[0]
+        Hj_num_cooperN = 0
         
         exp = 1
         if( self.flux_enabled == True ):
             exp = np.exp(1j*2*np.pi*self.f_ext.val)
-        
-        if( self.node1 != 0 and self.node2 != 0 ):
-            Hj_num_cooperN += -Ej/2*(raising_ops[node1-1]*lowering_ops[node2-1]*exp \
-                                          + lowering_ops[node1-1]*raising_ops[node2-1]/exp)
-        else:
-            node = node1 + node2 # equals to nonzero node number
-            Hj_num_cooperN += -Ej/2*(lowering_ops[node-1]*exp \
-                                          + raising_ops[node-1]/exp)
             
+        node1 = self.node1
+        node2 = self.node2
+        l1 = self.scheme.l_ops[node1].val
+        l2 = self.scheme.l_ops[node2].val
+        r1 = self.scheme.r_ops[node1].val
+        r2 = self.scheme.r_ops[node2].val
+        
+        Hj_num_cooperN += -Ej/2*(r1*l2*exp + l1*r2/exp)
         return Hj_num_cooperN
 
         
@@ -208,21 +183,6 @@ class Cap( Element ):
         self.subscript = str(self.node1) + str(self.node2)
         self.C = Var("C_{" + str(self.subscript) + "}")
         self.params = [self.C]
-        
-        self.n1,self.n2 = vars_from_symbols( 
-                        sympy.symbols(      
-                                        ["\hat{n}_{"+str(self.node1) + "}",
-                                         "\hat{n}_{"+str(self.node2) + "}"],
-                                        commutative=False
-                                    ) 
-                        )
-        self.phi1_d,self.phi2_d = vars_from_symbols(
-                            sympy.symbols(
-                                        ["\dot{\hat{\\varphi}}_" + str(self.node1),
-                                         "\dot{\hat{\\varphi}}_" + str(self.node2)],
-                                         commutative=False
-                                         )
-                            )
 
             
     
@@ -233,14 +193,16 @@ class Cap( Element ):
         self.C = self.params[0]
     
     def _Hc_symbol_phase(self):
-        phi1_d,phi2_d = self.phi1_d.sym,self.phi2_d.sym
+        phi1_d = self.scheme.phi_d[self.node1].sym
+        phi2_d = self.scheme.phi_d[self.node2].sym
         
         C = self.C.sym
             
         return C*SI.hbar.sym**2/(4*SI.e.sym**2)*(phi1_d - phi2_d)**2/2
     
     def _Hc_symbol_cooperN(self):
-        n1,n2 = self.n1.sym,self.n2.sym
+        n1 = self.scheme.n[self.node1].sym
+        n2 = self.scheme.n[self.node2].sym
 
         C = self.C.sym
             

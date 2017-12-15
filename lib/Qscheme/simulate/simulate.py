@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 
 import Qscheme.netlist as nl
 import Qscheme.simulate.operator_constructors as ops
+import Qscheme.variables as vs
 
 from collections import OrderedDict
 
@@ -27,35 +28,60 @@ class Scheme():
         self.graph = graph
         self.elements = {}
         
-        
-        if( graph != None ):
-            self._init_elements()
-        
         self.file_path = file_path
         if( self.graph is None ):
-            if( self.file_path != None ):
                 self.graph_from_file(file_path)
         
+        self._init_elements()
+        
+        self.nodes_N = len(self.graph)
+        self.cooper_N = None
+        self.r_ops, self.l_ops = \
+            vs._get_raising_lowering_ops_as_vars(self.nodes_N)
+        self.n = vs._get_cooperN_ops_as_vars(self.nodes_N)
+        self.phi = vs._get_phase_ops_as_vars(self.nodes_N)
+        self.phi_d = vs._phase_pd_ops_as_vars(self.nodes_N)
+        
+        self.nodes_marks_list = ["GND"] # first node is always ground node
+        
+        # VARS of the raising, loweriing, node cooper pairs number operator
+        # phase and phase derivative operators        
+        self._change_symbols_based_on_nodes_marks()
+        
         self.params = None
+        # Copies all parameters to the self.params dict.
+        # Params with the same name will be overwritten.
+        # But this is not the case in the moment
+        # right after construction.
         self._load_params_to_scheme_class()
         
+        # clears and constructs new Hc, Hj and Cmatrix symbols
+        # based on corresponding graph elements functions
+        self._provide_elements_with_scheme_instance()
         self.refresh_symbols()
         
-        self.nodes_N = len(self.graph) - 1
-        self.cooper_N = None
-        self.raising_ops = None
-        self.lowering_ops = None
-        self.charge_ops = None
         
-        self.simulate_params_iter = None
+        
+    def _mark_nodes(self):
+        pass
+    
+    def _change_symbols_based_on_nodes_marks(self):
+        for element in self.elements.values():
+            if( isinstance(element,nl.Battery) ):
+                n2 = element.node2
+                #self.n[n2].sym = sympy.Symbol("V_{" + str(element.node2) + "}")
+    
+    def _provide_elements_with_scheme_instance(self):
+        for refDes in self.elements:
+            self.elements[refDes].scheme = self
     
     def _construct_ops(self,cooper_N):
         if( self.cooper_N == cooper_N  ):
             return
         else:
             self.cooper_N = cooper_N
-            self.raising_ops,self.lowering_ops = ops.raising_lowering_ops(self.nodes_N,self.cooper_N)
-            self.charge_ops = ops.charge_ops(self.nodes_N,self.cooper_N)
+            self.r_ops,self.l_ops = vs._get_raising_lowering_ops_as_vars(self.nodes_N,self.cooper_N)
+            self.n = vs._get_cooperN_ops_as_vars(self.nodes_N,self.cooper_N)
     
     def refresh_symbols(self):
         self.Hc_sym_phase = None
@@ -71,6 +97,9 @@ class Scheme():
                 
         self.C_matrix_sym = None
         self._construct_Cap_matrix_sym_from_graph()
+        
+        self.C_matrix_internal_sym = None
+        
         
     def _load_params_to_scheme_class(self):
         self.params = OrderedDict()
@@ -92,7 +121,7 @@ class Scheme():
                     break    
                 
         self._load_params_to_scheme_class()
-        #self._connect_element_params_to_scheme_params()
+        self._connect_element_params_to_scheme_params()
         self.refresh_symbols()
 
     def assign_values_to_parameters(self,parameters_list,values_list):
@@ -119,7 +148,7 @@ class Scheme():
         
     def _construct_Hj_sym_phase(self):
         self.Hj_sym_phase = 0
-        for element in self.elements.values():
+        for element in self.elements.values(): 
             self.Hj_sym_phase += element._Hj_symbol_phase()
             
     def _construct_Hj_num_phase(self):
@@ -132,13 +161,15 @@ class Scheme():
             
     def _construct_Hc_num_cooperN(self, cooper_N):
         self._construct_ops(cooper_N)
-        self.Hc_num_cooperN = qp.tensor(*[qp.qzero(2*cooper_N + 1) for i in range(self.nodes_N)])
+        self.Hc_num_cooperN = 0
         subs_dict = {var.sym:var.val for var in self.params.values()}
-        C_inv = np.array( ((self.C_matrix_sym)**-1).subs(subs_dict) ).astype(np.float64)
-        C_inv *= 2*(SI.e.val)**2/(SI.h.val*10**9)   
-        for i in range(self.nodes_N):
-            for j in range(self.nodes_N):
-                self.Hc_num_cooperN += self.charge_ops[i]*C_inv[i,j]*self.charge_ops[j]
+        C_inv_num = np.array( ((self.C_matrix_sym)**-1).subs(subs_dict) ).astype(np.float64)
+        C_inv_num *= 2*(SI.e.val)**2/(SI.h.val*10**9)   
+        for i in range(1,self.nodes_N):
+            for j in range(1,self.nodes_N):
+                ni = self.n[i].val
+                nj = self.n[j].val
+                self.Hc_num_cooperN += ni*C_inv_num[i-1,j-1]*nj
           
     def _construct_Hj_sym_cooperN(self):        
         self.Hj_sym_cooperN = 0
@@ -146,13 +177,10 @@ class Scheme():
             self.Hj_sym_cooperN += element._Hj_symbol_cooperN()
         
     def _construct_Hj_num_cooperN(self,cooper_N):
-        self._construct_ops(cooper_N)        
-        self.Hj_num_cooperN = qp.tensor(*[qp.qzero(2*cooper_N + 1) for i in range(self.nodes_N)])
+        self._construct_ops(cooper_N)      
+        self.Hj_num_cooperN = 0
         for element in self.elements.values():
-            self.Hj_num_cooperN += element._Hj_num_cooperN(self.raising_ops, self.lowering_ops)                
-            
-    
-    
+            self.Hj_num_cooperN += element._Hj_num_cooperN()                
 
     
     def _construct_Cap_matrix_sym_from_graph(self):
@@ -163,7 +191,7 @@ class Scheme():
             
         @return:
         '''
-        N = len(self.graph)-1
+        N = self.nodes_N-1
         C_matrix = sympy.zeros( N,N )
         for edge in self.graph.edges(data="element"):
             # to make nodei mutable type
@@ -188,7 +216,6 @@ class Scheme():
     def graph_from_file(self, file_path):
         self.graph = nl.build_graph_from_file_PADS(file_path)
         self.file_path = file_path
-        self._init_elements()
         
     def find_eigensystem(self,cooperN,eigvals_N):
         self._construct_Hc_num_cooperN(cooperN)
