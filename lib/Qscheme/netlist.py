@@ -22,31 +22,54 @@ class Element():
     def __init__(self, element_type, refDes, group_name, edge ):
         if( group_name == None ):
             group_name = refDes
-        self.element_type = element_type
-        self.group_name = group_name
-        self.refDes = refDes
+            
+        self.element_type = element_type # string that represents the element type
+        self.group_name = group_name # user defined group name of the element
+        self.refDes = refDes # unique designator of the element in scheme
         
-        self.scheme = None
+        self.scheme = None # reference to the scheme class
         
+        # nodes that are the ends of the elements edge
         self.node1 = edge[0]
         self.node2 = edge[1]
 
-        self.params = []      
-        self.subscript = None
+        # list of Vars from variables.py of this element parameters
+        self.params = [] 
+        
+        # subscript/designator of this element
+        # for symbolic representation in formulas
+        self.subscript = None 
        
+    # changes subscript of the element and updates
+    # all variables which symbolic representation is
+    # dependent on this subscript
     def change_subscript(self,new_subscript):
         self.subscript = new_subscript
         self._update_symbols()
     
-    def _init_symbols(self):
-        raise NotImplementedError
-    
+    # updates symbols depending on the changes in
+    # child-class data that affects symbolic 
+    # representation
     def _update_symbols(self):
         raise NotImplementedError
-        
+    
+    
+    # This function must set class parameters
+    # to refer to the Element.params list elements.
+    # This function is used by Scheme class
+    # right after collecting all variables of the scheme 
+    # with unique names into Scheme.params list.
+    # This function is used to force different Element class variables
+    # with the same name
+    # refer to the same variable structure, that can be accessed
+    # either through Scheme.params, Element.params or Element."variable_name"
+    # all of 3 ways to get access to the variables
+    # become equal after this operation end in Scheme class
     def _connect_to_params_list(self):
         raise NotImplementedError
     
+    # returns symbolic representations of kinetic and potential
+    # hamiltonians in cooper number and phase basises
     def _Hc_symbol_cooperN(self):
         raise NotImplementedError
         
@@ -59,6 +82,10 @@ class Element():
     def _Hj_symbol_phase(self):
         raise NotImplementedError
         
+        
+    # returns numerical representations of kinetic and potential
+    # hamiltonians in cooper number and phase basises
+    # objects returned as a QuTip operator classes
     def _Hc_num_cooperN(self, *ops):
         raise NotImplementedError
         
@@ -72,42 +99,47 @@ class Element():
         raise NotImplementedError
         
     
-    
+    # checking, whether the two Elements are equal
+    # comparing they refDes members
     def __eq__( self, Element2 ):
         if( self.RefDes == Element2.RefDes ):
             return True
         else:
             return False
-        
+    
+    # checking whether two Elements are NOT equal
     def __nq__( self, Element2 ):
         return (not self.__eq__( Element2 ))
-        
+
+# superconductor-insulator-superconductor josephson junction class
 class SIS_JJ( Element ):
     def __init__(self, refDes, group_name,  edge ):     
         super( SIS_JJ,self ).__init__( "SIS_JJ", refDes, group_name, edge )
         self.subscript = refDes
+        self.ext_flux_subscript = refDes # f_ext variable is having its own subscript
         
         # params with changable symbols
         self.C = Var("C_{" + str(self.subscript) + "}")
         self.Ej = Var("E_{" + str(self.subscript) + "}")
         self.f_ext = Var("\\varphi_{" + str(self.refDes) + "}")        
-        self.params = [self.C,self.Ej,self.f_ext]
         
-        # params with fixed symbols                 
-        self.ext_flux_subscript = refDes
+        # grouping params into list
+        self.params = [self.C,self.Ej,self.f_ext]            
         
-        self.flux_enabled = False
+        # whether or not this edge is not in the spanning tree
+        self.flux_enabled = False 
     
     def _update_symbols(self):
         self.C.sym = sympy.Symbol("C_{" + str(self.subscript) + "}")
         self.Ej.sym = sympy.Symbol("E_{" + str(self.subscript) + "}")        
         self.f_ext.sym = sympy.Symbol("\\varphi_{" + str(self.ext_flux_subscript) + "}")
-        
+    
+    # rewritten in order to change flux_subscript
     def change_subscript(self,new_subscript,new_flux_subscript=None):
         if( new_flux_subscript != None ):
             self.ext_flux_subscript = new_flux_subscript
         super(SIS_JJ,self).change_subscript(new_subscript)
-        
+
     def _connect_to_params_list(self):
         self.C = self.params[0]
         self.Ej = self.params[1]
@@ -149,9 +181,9 @@ class SIS_JJ( Element ):
         
         E_j = self.Ej.sym
         phi_ext = self.f_ext.sym
-        
+        exp = sympy.exp(2*sympy.pi*sympy.I*phi_ext)
         if( self.flux_enabled is True ):
-            return -E_j*(l1*r2*sympy.exp(1j*2*sympy.pi*phi_ext) + r1*l2*sympy.exp(-1j*2*sympy.pi*phi_ext))/2    
+            return -E_j*(l1*r2*exp + r1*l2/exp)/2    
         else:
             return -E_j*(l1*r2 + r1*l2)/2
         
@@ -232,9 +264,6 @@ class Battery( Element ):
     def __init__(self, refDes, group_name, edge ):
         super( Battery,self ).__init__( "Battery", refDes, group_name, edge )
     
-    def _init_symbols(self):
-        pass
-    
     def _update_symbols(self):
         pass
     
@@ -271,7 +300,9 @@ def _get_refDes_groupNames_PADS( file_rows ):
         parses file and return edge types, represented by electrical elements
     @parameters:
         file_rows - list of lists containing csv file (e.g. list( csv.reader(file)) 
-    @return: list of Element() objects used in this netlist file
+    @return: 
+        "reference designators" and "group names" of objects used
+        in file that represents schematic
     '''
     refDes_list = []
     group_name_list = []
@@ -300,16 +331,24 @@ def build_graph_from_netlist_PADS( file_rows ):
     ''' 
     @description:
         parses file and MultiGraph object that represents the schematic
-        Nodes are nets in electrical schematic, enumeration is kept the same as in the file
+        Nodes are numbers of nets in the electrical schematic, 
+        enumeration is kept the same as in the file
         Edges are electrical elements (capacitors, SIS josephson junctions etc.)
     @parameters:
-        file_rows - list of lists containing csv file (e.g. list( csv.reader(file)) 
+        file_rows - list of lists containing csv file, e.g. list( csv.reader(file) ) 
     @return: MultiGraph object from networkx module, containing electrical schematic
     '''
-    refDes_list, group_name_list = _get_refDes_groupNames_PADS( file_rows )        
-    nets_list = [[] for x in refDes_list]
-    graph = nx.MultiGraph()
     
+    # getting reference designators and group names of the 
+    # elements presented in file
+    refDes_list, group_name_list = _get_refDes_groupNames_PADS( file_rows )        
+    
+    # contains pairs of nodes that corresponds to the elements
+    # stored in refDes_list
+    nets_list = [[] for x in refDes_list] 
+    graph = nx.MultiGraph() # structure that will be returned by this function
+    
+    # filling the nets_list structure
     for i,row in enumerate( file_rows ):
         if( len(row) < 2 ):
             continue
@@ -317,23 +356,41 @@ def build_graph_from_netlist_PADS( file_rows ):
         net_id = row[1].split('_') 
         
         # found row with net information (net is the node of the graph)
-        if( net_id[0] == "Net" ):
+        if( net_id[0] == "Net" ): #checking if this is a net
             graph.add_node( int(net_id[1]) ) # adding net with corresponding number
             element_row = file_rows[i+1]
             for element in element_row[:-1]: # last element is empty due to DipTrace export...
+                # parsing CSV row
                 refDes,pinDesc = element.split('.')
                 i = refDes_list.index( refDes )
+                
+                # in case that corrent element has positive and
+                # negative terminals, the negative will always be
+                # stored firstly in nets_list[i]
                 if( pinDesc == "NEG" ):
                     nets_list[i].insert( 0,int(net_id[1]) )
                 else:
                     nets_list[i].append( int(net_id[1]) )
+    #nets_list is filled
     
+    # iterating through nets_list and ref_des
+    # and fulfilling MultiGraph structure that shall
+    # be returned after
     for i,edge in enumerate(nets_list):
+        # getting refDes of the current element
         refDes = refDes_list[i]
         element_arg = None
+        
+        # getting all the letters from refDes
+        # they correspond to the element type 
+        # element type part of refDes is predefined and unchanged
+        # during the software developement process
         refName = re.compile("[A-Za-z]*").match(refDes)[0]
+        
+        # getting the user-defined group name
         group_name = group_name_list[i]
         
+        # parsing the refDes element type and adding this to graph
         if( refName == "J" ): # Josephson junction
             element_arg = SIS_JJ(refDes,group_name,edge)
         elif( refName == "C" ): #capacitor

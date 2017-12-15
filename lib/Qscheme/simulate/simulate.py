@@ -29,6 +29,9 @@ class Scheme():
         self.elements = {}
         
         self.file_path = file_path
+        
+        # constructing graph from file, if it is not 
+        # passed as an argument
         if( self.graph is None ):
                 self.graph_from_file(file_path)
         
@@ -108,6 +111,16 @@ class Scheme():
                 self.params[elem_param.sym] = elem_param
     
     def _connect_element_params_to_scheme_params(self):
+        '''
+        @description:
+            Storing parameters as classes allows to decrease number
+        of parameter classes. Function forces all variables in Element 
+        classes to refer to the Scheme.params variables.
+            This made for rapid parameter sweep. The parameters 
+        one only need to be changed via Scheme.params. 
+            So, there is no need to iterate over all graph for each time you 
+        need to set new parameter value.
+        '''
         for element in self.elements.values():
             for i,param in enumerate(element.params):
                 element.params[i] = self.params[param.sym]

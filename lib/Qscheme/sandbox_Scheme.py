@@ -53,7 +53,6 @@ if( __name__ == "__main__" ):
     display(scheme.C_matrix_sym)
     N_pts = 21
 
-
     d1 = []
     f_ext_list = np.linspace(0.4,0.6,N_pts)
     for i,f_ext in enumerate(f_ext_list):
