@@ -10,13 +10,11 @@ sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "\\..\\" )
 
 import numpy as np
 import sympy
-import qutip as qp
+
 import itertools
 
-import matplotlib.pyplot as plt
 
-import Qscheme.netlist as nl
-import Qscheme.simulate.operator_constructors as ops
+import Qscheme.schematic._netlist_parser as nl
 import Qscheme.variables as vs
 
 from collections import OrderedDict
@@ -57,9 +55,6 @@ class Scheme():
         # initializing elements dict
         self._init_elements()
         
-        # VARS of the raising, loweriing, node cooper pairs number operator
-        # phase and phase derivative operators        
-        self._change_symbols_based_on_nodes_marks()
         
         # Copies all parameters to the self.params dict.
         # Params with the same name will be overwritten.
@@ -112,30 +107,6 @@ class Scheme():
         for i,sym_to_assign in enumerate(parameters_list):
             self.params[sym_to_assign].val = values_list[i]
     
-    
-    def find_eigensystem(self,cooperN,eigvals_N):
-        self._construct_Hc_num_cooperN(cooperN)
-        self._construct_Hj_num_cooperN(cooperN)
-        H =  self.Hc_num_cooperN + self.Hj_num_cooperN
-        evals, einvects = H.eigenstates(sparse=True,eigvals=eigvals_N)
-            
-        return einvects, np.array(evals)
-    
-    
-    def square_mesh_eins(self,mesh):
-        '''
-        @description:
-            Performs sweep through supplied parameters as mesh
-            and finds eigensystem at every point
-        @parameters:
-            mesh - OrderedDict {"var_name" : [start,stop,step]}
-        '''
-        params_lines = [np.arange(v[0],v[1],v[2]) for v in mesh.values()]
-
-        mesh_iter = itertools.product(*params_lines)
-        for point in mesh_iter:
-            print(point)
-
             
     def _load_params_to_scheme_class(self):
         self.params = OrderedDict()
@@ -175,13 +146,6 @@ class Scheme():
     def _provide_elements_with_scheme_instance(self):
         for refDes in self.elements:
             self.elements[refDes].scheme = self
-
-    
-    def _change_symbols_based_on_nodes_marks(self):
-        for element in self.elements.values():
-            if( isinstance(element,nl.Battery) ):
-                n2 = element.node2
-                #self.n[n2].sym = sympy.Symbol("V_{" + str(element.node2) + "}")
     
     
     def _construct_ops(self,cooper_N):
@@ -286,177 +250,10 @@ class Scheme():
         
     def _mark_nodes(self):
         pass
-
-
-
-def get_inv_dl_caps_matrix( Csh, alpha ):
-    return 1/(2*(alpha + Csh) + 1)*np.array( [[1+alpha+Csh,alpha+Csh],[alpha + Csh,1 + alpha + Csh]] )
-
-def H_c( Ec, Csh, alpha, N ):
-    islands_N = 2
-    charge_ops = qp.tensor(qp.charge(N),
-                           qp.identity(2*N+1)), \
-                 qp.tensor(qp.identity(2*N+1),
-                           qp.charge(N))
     
-    H_c = qp.tensor(qp.qzero(2*N+1), qp.qzero(2*N+1))
-    inv_dl_caps_matrix = get_inv_dl_caps_matrix( Csh, alpha )
-    for i in range(0,islands_N):
-        for j in range(0,islands_N):
-            H_c += Ec*charge_ops[i]*inv_dl_caps_matrix[i,j]*charge_ops[j]
-    return H_c
-
-
-def plot_eigenergies(engs,fs):
-    for idx in range(1,engs.shape[1]):
-        plt.plot(fs,engs[:,idx]-engs[:,0], label=r'$E_{%s}-E_{%s}$'%(idx,0))
-    plt.plot( fs,engs[:,2]-engs[:,1], label=r"$E_2 - E_1$" )
-    plt.plot( fs,(engs[:,3]-engs[:,0])/2, label=r"$(E_3 - E_0)/2$" )
-    plt.plot( fs,(engs[:,2]-engs[:,0])/2, label=r"$(E_2 - E_0)/2$" )
-    plt.legend()
-    plt.grid()
+    def get_params_values(self):
+        return [var.val for var in self.params.values()]
     
-def plot_eigenergies_custom(engs,fs):
-    for idx in range(1,3):
-        plt.plot(fs,engs[:,idx]-engs[:,0], label=r'$E_{%s}-E_{%s}$'%(idx,0))
-    plt.plot( fs,engs[:,2]-engs[:,1], label=r"$E_2 - E_1$" )
-    plt.plot( fs,(engs[:,3]-engs[:,0])/2, label=r"$(E_3 - E_0)/2$" )
-    plt.plot( fs,(engs[:,2]-engs[:,0])/2, label=r"$(E_2 - E_0)/2$" )
-    plt.legend()
-    plt.grid()
-
-
-def array_eins_from_params_product(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,eigvals_N_pts):
-    arr_evals = []
-    arr_einvects = []
-    
-    fparams = [fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,eigvals_N_pts]
-    for i,param in enumerate(fparams):
-        if( not isinstance(param,list) and not isinstance(param,np.ndarray)):
-            fparams[i] = [param]
-            
-    # sorted order is preserved
-    prod = itertools.product(*fparams)
-    
-    for params in prod:
-        f = params[0]*2*np.pi
-        E_C = params[1]
-        E_J = params[2]
-        Csh = params[3]
-        alpha = params[4]
-        cooper_N = params[5]
-        eigvals_N = params[6]
-        
-        H = H_J(E_J,alpha,f,cooper_N) + H_c(E_C,Csh,alpha,cooper_N)
-        evals, einvects = H.eigenstates(sparse=True,eigvals=eigvals_N)
-        arr_evals.append(evals)
-        arr_einvects.append(einvects)
-        
-    return arr_einvects, np.array(arr_evals)
-
-def array_eins_from_params_lists(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,eigvals_N_pts):
-    arr_evals = []
-    arr_einvects = []
-    # sorted order is preserved
-    
-    params = [fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,eigvals_N_pts]
-    lengths = []
-    for i, param in enumerate(params):
-        if( isinstance(param,list) ):
-            lengths.append(len(param))
-        elif( isinstance(param,np.ndarray) ):
-            lengths.append(param.shape[0])
-        else:
-            lengths.append(1)
-            
-    max_len = max(lengths)
-    
-    for i,param in enumerate(params):
-        if( not isinstance(param,(list, np.ndarray)) ):
-            params[i] = itertools.repeat(param,max_len)
-        
-    iter_list = zip( *params )
-    
-    for i,vals in enumerate(iter_list):
-        f = vals[0]*2*np.pi
-        E_C = vals[1]
-        E_J = vals[2]
-        Csh = vals[3]
-        alpha = vals[4]
-        cooper_N = vals[5]
-        eigvals_N = vals[6]
-        
-        print('\r{:g} {:g} {:g} {:g} {:g} {:g} {:g}'.format(f,E_C,E_J,Csh,alpha,cooper_N,eigvals_N), end='')
-        H = H_J(E_J,alpha,f,cooper_N) + H_c(E_C,Csh,alpha,cooper_N)
-        evals, einvects = H.eigenstates(sparse=True,eigvals=eigvals_N)
-        arr_evals.append(evals)
-        arr_einvects.append(einvects)
-        
-    return arr_einvects, np.array(arr_evals)
-
-def array_coupling_from_parameters_product(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,multiplier):
-    multiplier = 2*e*V_r0*beta/h # GHz
-    
-    g = []
-    
-    fparams = [fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,2]
-    for i,param in enumerate(fparams):
-        if( not isinstance(param,list) and not isinstance(param,np.ndarray)):
-            fparams[i] = [param]
-            
-    # sorted order is preserved
-    prod = itertools.product(*fparams)
-    
-    Evs, Engs = array_eins_from_params_product(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,2)
-    Evs = np.array(Evs)
-    
-    for i,params in enumerate(prod):
-        N = params[5]
-        n1_op = qp.tensor(qp.charge(N),qp.identity(2*N+1))
-        n2_op = qp.tensor(qp.identity(2*N+1),qp.charge(N))
-        
-        vec0 = Evs[i,0]
-        vec1 = Evs[i,1]
-        g.append( multiplier*(n1_op-n2_op).matrix_element(vec0.dag(),vec1) )
-                 
-    return np.array(g)
-
-def array_coupling_from_parameters_lists(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,multiplier):
-    multiplier = 2*e*V_r0*beta/h # GHz
-    
-    g = []
-    
-    Evs, Engs = array_eins_from_params_lists(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,2)
-    Evs = np.array(Evs)
-    
-    params = [fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,2]
-    lengths = []
-    for i, param in enumerate(params):
-        if( isinstance(param,list) ):
-            lengths.append(len(param))
-        elif( isinstance(param,np.ndarray) ):
-            lengths.append(param.shape[0])
-        else:
-            lengths.append(1)
-            
-    max_len = max(lengths)
-    
-    for i,param in enumerate(params):
-        if( not isinstance(param,(list, np.ndarray)) ):
-            params[i] = itertools.repeat(param,max_len)
-        
-    iter_list = zip( *params )
-    
-    for i, params in enumerate(iter_list):
-        N = params[5]
-        n1_op = qp.tensor(qp.charge(N),qp.identity(2*N+1))
-        n2_op = qp.tensor(qp.identity(2*N+1),qp.charge(N))
-        
-        vec0 = Evs[i,0]
-        vec1 = Evs[i,1]
-        g.append( multiplier*(n1_op-n2_op).matrix_element(vec0.dag(),vec1) )
-                 
-    return np.array(g)
-
-def array_eins_full_from_parameters_product(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts):
-    pass
+    def set_params_values(self, values):
+        for i,val in enumerate(values):
+            self.params[i] = val
