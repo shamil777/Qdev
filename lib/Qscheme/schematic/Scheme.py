@@ -8,24 +8,29 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "\\..\\" )
 
+import itertools
+from collections import OrderedDict
+
 import numpy as np
 import sympy
+import networkx as nx
 
-import itertools
-
-
+import SI
 import Qscheme.schematic._netlist_parser as nl
 import Qscheme.variables as vs
 
-from collections import OrderedDict
-
-import SI
+from IPython.display import display
 
 class Scheme():
     def __init__(self,graph=None,file_path=None):
         self.file_path = file_path
         self.graph = graph
+        self.min_span_tree = None
+        self.min_span_tree_elements = OrderedDict()
+        self.flux_elements = OrderedDict()
+        self.fundamental_cycles_elements = OrderedDict()
         self.elements = OrderedDict()
+        self.ext_V_elements = OrderedDict()
         self.params = OrderedDict()
         
         #### SYMBOLS AND VARIABLES DEFINITIONS START ####
@@ -33,7 +38,13 @@ class Scheme():
         self.Hj_sym_phase = None
         self.Hc_sym_cooperN = None
         self.Hj_sym_cooperN = None
+        self.H_coupling_sym_phase = None
+        self.H_coupling_sym_cooperN = None
+        self.H_external_sym_phase = None
+        self.H_external_sym_cooperN = None
         self.C_matrix_sym = None
+        self.C_intermidiate_sym = None
+        self.C_matrix_internal_sym = None
         
         self.nodes_marks_list = ["GND"] # first node is always ground node
         self.cooper_N = None
@@ -55,37 +66,111 @@ class Scheme():
         # initializing elements dict
         self._init_elements()
         
+        # finding some spanning tree
+        self.min_span_tree = nx.minimum_spanning_tree(self.graph)
+        # filling spanning tree elements reference dict
+        for edge in self.min_span_tree.edges(data="element"):
+            element = edge[2]
+            self.min_span_tree_elements[element.refDes] = element
+        # filling flux_elements reference dict
+        for element_key in self.elements:
+            element = self.elements[element_key]
+            if( element_key not in self.min_span_tree_elements ):
+                self.flux_elements[element.refDes] = element
+                
+        # finding fundamental cycles that correspond to the spanning tree
+        self.find_fundamental_cycles()
+        
+        # enabling fluxes through all the flux_elements members
+        for element_key in self.flux_elements:
+            element = self.flux_elements[element_key]
+            element.flux_enable()
         
         # Copies all parameters to the self.params dict.
         # Params with the same name will be overwritten.
         # But this is not the case in this moment in constructor
         self._load_params_to_scheme_class()
         
-        # supply Elements with reference to this Scheme class
-        self._provide_elements_with_scheme_instance()
-        
         # clears and constructs new Hc, Hj and Cmatrix symbols
+        # also constructing H_coupling and H_external
         # based on corresponding graph elements functions
         self.refresh_symbols()
     
     
+    def find_fundamental_cycles(self):
+        tmp_graph = self.min_span_tree.copy() # not a multigraph
+        
+        # iterating over each edge that does not belong to the spanning tree
+        for element_class in self.flux_elements.values():
+            # adding this edge to the spanning tree
+            tmp_graph.add_edge(element_class.node1,element_class.node2,element=element_class)
+            
+            # finding fundamental cycle corresponding to the current edge
+            paths = list(nx.all_simple_paths(tmp_graph,source=element_class.node1,target=element_class.node2))
+            simple_cycle = paths[1] + list(reversed(paths[0][:-1]))
+            # fundamental cycle orientation corresponds to the 
+            # element_class.node1 -> element_class.node2 orientation of the cycle
+            
+            # generating list of elements in this             
+            cycle_elements = []
+            for i in range(len(simple_cycle)-1):
+                element = tmp_graph[simple_cycle[i]][simple_cycle[i+1]]["element"]
+                cycle_elements.append(element)
+                
+            self.fundamental_cycles_elements[element_class.refDes] = cycle_elements
+            tmp_graph.remove_edge(element_class.node1,element_class.node2)
+
+    def fundamental_cycles_info_str(self):        
+        # iterating over fundamental cycles
+        info_string = ""
+        for flux_element_key,cycle_elements in self.fundamental_cycles_elements.items():
+            element = self.elements[flux_element_key]
+            info_string += "cycle for " + str(flux_element_key) + ", oriented as " + \
+            str(element.node1) + "->" + str(element.node2) + ":\n"
+            
+            for element in cycle_elements:
+                info_string += element.refDes + " "
+                
+            info_string.strip()
+            info_string += '\n'
+            
+        return info_string
+    
+    def variables_info_str(self):
+        info_str = ""
+        for var in self.params.values():
+            info_str += str(var.sym) + " = " + str(var.val) + "\n"
+        return info_str
+    
     def refresh_symbols(self):
         self.Hc_sym_phase = None
         self.Hj_sym_phase = None
+        self.H_coupling_sym_phase = None
+        self.H_external_sym_phase = None
         self._construct_Hc_sym_phase()
         self._construct_Hj_sym_phase()
+        self._construct_H_coupling_sym_phase()
+        self._construct_H_external_sym_phase()
         
         self.Hc_sym_cooperN = None
         self.Hj_sym_cooperN = None
+        self.H_coupling_sym_cooperN = None
+        self.H_external_sym_cooperN = None
         self._construct_Hc_sym_cooperN()
         self._construct_Hj_sym_cooperN()
+        self._construct_H_coupling_sym_cooperN()
+        self._construct_H_external_sym_cooperN()
+        
         self.H_cooperN = self.Hc_sym_cooperN + self.Hj_sym_cooperN
                 
         self.C_matrix_sym = None
         self._construct_Cap_matrix_sym_from_graph()
         
+        self.C_matrix_intermidiate_sym = None
+        self._construct_Cap_matrix_intermidiate_sym_from_Cap_matrix_sym()
+        
         self.C_matrix_internal_sym = None
-    
+        self._construct_Cap_matrix_internal_sym_from_Cap_matrix_intermidiate_sym()
     
     def assign_subscripts_to_nameGroups(self,group_name_list,subscript_list):
         for element in self.elements.values():
@@ -113,7 +198,7 @@ class Scheme():
         for element_sym,element in self.elements.items():
             for elem_param in element.params:
                 self.params[elem_param.sym] = elem_param
-    
+                
     
     def _init_elements(self):
         '''
@@ -124,6 +209,13 @@ class Scheme():
         for edge in self.graph.edges(data="element"):
             element = edge[2]
             self.elements[element.refDes] = element
+            
+        # supply Elements with reference to this Scheme class
+        self._provide_elements_with_scheme_instance()
+        
+        for element in self.elements.values():
+            if( element.element_type == "EXT_V_SOURCE" ):
+                self.ext_V_elements[element.refDes] = element
     
     
     def _connect_element_params_to_scheme_params(self):
@@ -211,8 +303,33 @@ class Scheme():
         self._construct_ops(cooper_N)      
         self.Hj_num_cooperN = 0
         for element in self.elements.values():
-            self.Hj_num_cooperN += element._Hj_num_cooperN()                
+            self.Hj_num_cooperN += element._Hj_num_cooperN()   
 
+    def _construct_H_coupling_sym_phase(self):
+        pass
+
+    def _construct_H_coupling_num_phase(self)             :
+        raise NotImplementedError
+        
+    def _construct_H_coupling_sym_cooperN(self):
+        pass 
+    
+    def _construct_H_coupling_num_cooperN(self, cooperN):
+        raise NotImplementedError
+        
+    def _construct_H_external_sym_phase(self):
+        pass
+
+    def _construct_H_external_num_phase(self)             :
+        raise NotImplementedError
+        
+    def _construct_H_external_sym_cooperN(self):
+        pass
+    
+    def _construct_H_external_num_cooperN(self, cooperN):
+        raise NotImplementedError
+        
+    
     
     def _construct_Cap_matrix_sym_from_graph(self):
         ''' 
@@ -222,7 +339,7 @@ class Scheme():
             
         @return:
         '''
-        N = self.nodes_N-1
+        N = self.nodes_N-1 
         C_matrix = sympy.zeros( N,N )
         for edge in self.graph.edges(data="element"):
             # to make nodei mutable type
@@ -232,6 +349,9 @@ class Scheme():
             element = edge[2]
             if( isinstance(element,(nl.Cap,nl.SIS_JJ)) ):
                 C = element.C.sym
+                
+                # Zero row and column corresponds to the 
+                # ground. This row and column is excluded
                 if( node1 != 0 and node2 != 0 ):
                     C_matrix[node1-1,node2-1] -= C
                     C_matrix[node2-1,node1-1] -= C
@@ -241,7 +361,32 @@ class Scheme():
                     C_matrix[node2-1,node2-1] += C
 
         self.C_matrix_sym = C_matrix
+    
+    def _construct_Cap_matrix_intermidiate_sym_from_Cap_matrix_sym(self):
+        '''
+        @description:
+            Constructs intermidiate matrix from full capcity matrix
+        '''
+                
+        N = self.nodes_N - 1
+        S_matrix = sympy.eye(N)        
+        for ext_V_element in self.ext_V_elements.values():
+            k = ext_V_element.node2 - 1
+            l = ext_V_element.node1 - 1
+            S_matrix += sympy.Matrix(N,N,lambda i,j: 1 if( i == k and j == l ) else 0)
+            
+        self.C_intermidiate_sym = S_matrix.T*self.C_matrix_sym*S_matrix
         
+    
+    def _construct_Cap_matrix_internal_sym_from_Cap_matrix_intermidiate_sym(self):
+        '''
+        @description:
+            Constructs internal 
+        '''
+            
+        
+        
+                
     
     def graph_from_file(self, file_path):
         self.graph = nl.build_graph_from_file_PADS(file_path)

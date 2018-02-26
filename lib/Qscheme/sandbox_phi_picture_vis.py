@@ -3,7 +3,7 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "\\..\\" )
 
-import Qscheme.simulate as qss
+import Qscheme.simulator.SchemeSimulator as qss
 import numpy as np
 
 import matplotlib.pyplot as plt

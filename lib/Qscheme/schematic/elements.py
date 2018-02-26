@@ -18,23 +18,45 @@ class Element():
         self.group_name = group_name # user defined group name of the element
         self.refDes = refDes # unique designator of the element in scheme
         
+        # whether or not this edge is not in the spanning tree
+        self.flux_enabled = False
+        
         self.scheme = None # reference to the scheme class
         
         # nodes that are the ends of the elements edge
         self.node1 = edge[0]
         self.node2 = edge[1]
+        
+        # common variables for every element
+        self.f_ext = Var("\Phi_{" + str(self.refDes) + "}")        
 
         # list of Vars from variables.py of this element parameters
         self.params = [] 
         
         # subscript/designator of this element
         # for symbolic representation in formulas
-        self.subscript = None 
+        self.subscript = self.refDes
+        self.f_ext_subscript = self.refDes
        
+    # enables symbolic treatment of the external flux
+    def flux_enable(self):
+        self.flux_enabled = True
+        self.params.append(self.f_ext)
+        self.scheme.params[self.f_ext.sym] = self.f_ext
+    
+    def flux_disable(self):
+        self.flux_enabled = False
+        flux_idx = self.params.index(self.f_ext)
+        self.params.pop(flux_idx)
+        del self.scheme.params[self.f_ext]
+        
+        
     # changes subscript of the element and updates
     # all variables which symbolic representation is
     # dependent on this subscript
-    def change_subscript(self,new_subscript):
+    def change_subscript(self,new_subscript, new_flux_subscript=None ):
+        if( new_flux_subscript != None ):
+            self.f_ext_subscript = new_flux_subscript
         self.subscript = new_subscript
         self._update_symbols()
     
@@ -106,38 +128,31 @@ class Element():
 class SIS_JJ( Element ):
     def __init__(self, refDes, group_name,  edge ):     
         super( SIS_JJ,self ).__init__( "SIS_JJ", refDes, group_name, edge )
-        self.subscript = refDes
-        self.ext_flux_subscript = refDes # f_ext variable is having its own subscript
-        
         # params with changable symbols
         self.C = Var("C_{" + str(self.subscript) + "}")
         self.Ej = Var("E_{" + str(self.subscript) + "}")
-        self.f_ext = Var("\Phi_{" + str(self.refDes) + "}")        
         
         # grouping params into list
-        self.params = [self.C,self.Ej,self.f_ext]            
-        
-        # whether or not this edge is not in the spanning tree
-        self.flux_enabled = False 
+        if( self.flux_enabled ):
+            self.params = [self.C,self.Ej,self.f_ext]            
+        else:
+            self.params = [self.C, self.Ej]
+    
     
     def _update_symbols(self):
         self.C.sym = sympy.Symbol("C_{" + str(self.subscript) + "}")
         self.Ej.sym = sympy.Symbol("E_{" + str(self.subscript) + "}")        
-        self.f_ext.sym = sympy.Symbol("\Phi_{" + str(self.ext_flux_subscript) + "}")
-    
-    # rewritten in order to change flux_subscript
-    def change_subscript(self,new_subscript,new_flux_subscript=None):
-        if( new_flux_subscript != None ):
-            self.ext_flux_subscript = new_flux_subscript
-        super(SIS_JJ,self).change_subscript(new_subscript)
+        if( self.flux_enabled ):
+            self.f_ext.sym = sympy.Symbol("\Phi_{" + str(self.f_ext_subscript) + "}")
+
 
     def _connect_to_params_list(self):
         self.C = self.params[0]
         self.Ej = self.params[1]
-        self.f_ext = self.params[2]
         
-    def enable_ext_flux(self):
-        self.flux_enabled = True
+        if( self.flux_enabled ):
+            self.f_ext = self.params[2]
+        
     
     def _Hc_symbol_phase(self):
         phi1_d = self.scheme.phi_d[self.node1].sym
@@ -253,7 +268,7 @@ class Cap( Element ):
 
 class Battery( Element ):
     def __init__(self, refDes, group_name, edge ):
-        super( Battery,self ).__init__( "Battery", refDes, group_name, edge )
+        super( Battery,self ).__init__( "EXT_V_SOURCE", refDes, group_name, edge )
     
     def _update_symbols(self):
         pass
@@ -284,3 +299,38 @@ class Battery( Element ):
         
     def _Hj_num_phase(self, *ops):
         return 0
+    
+class Resonator_V( Element ):
+    def __init__(self, refDes, group_name, edge ):
+        super( Resonator_V,self ).__init__( "EXT_V_SOURCE", refDes, group_name, edge )
+    
+    def _update_symbols(self):
+        pass
+    
+    def _connect_to_params_list(self):
+        pass
+    
+    def _Hc_symbol_phase(self):
+        return 0
+    
+    def _Hc_symbol_cooperN(self):
+        return 0
+    
+    def _Hj_symbol_phase(self):
+        return 0
+    
+    def _Hj_symbol_cooperN(self):
+        return 0
+
+    def _Hc_num_cooperN(self, *ops):
+        return 0
+        
+    def _Hc_num_phase(self, *ops):
+        return 0
+    
+    def _Hj_num_cooperN(self, *ops):
+        return 0
+        
+    def _Hj_num_phase(self, *ops):
+        return 0
+    

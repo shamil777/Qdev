@@ -3,7 +3,7 @@ import csv
 
 import networkx as nx
 
-from Qscheme.schematic.elements import SIS_JJ, Cap, Battery
+from Qscheme.schematic.elements import SIS_JJ, Cap, Battery, Resonator_V
 
 def _get_refDes_groupNames_PADS( file_rows ):
     ''' 
@@ -26,8 +26,8 @@ def _get_refDes_groupNames_PADS( file_rows ):
     
     row = file_rows[element_i]
     while( len(row) > 0 ):
-        refDes = row[0]
-        group_name = row[5].split(',')[1]
+        refDes = row[0].strip()
+        group_name = row[1].strip()
         
         refDes_list.append(refDes)
         group_name_list.append(group_name)
@@ -61,29 +61,34 @@ def build_graph_from_netlist_PADS( file_rows ):
     
     # filling the nets_list structure
     for i,row in enumerate( file_rows ):
-        if( len(row) < 2 ):
+        if( len(row) == 0 ):
             continue
+        
+        row = row[0].split(' ')
+        
+        # if row corresponds to the Net description section
+        if( row[0] != "*SIGNAL*" ):
+            continue            
             
         net_id = row[1].split('_') 
         
         # found row with net information (net is the node of the graph)
-        if( net_id[0] == "Net" ): #checking if this is a net
-            graph.add_node( int(net_id[1]) ) # adding net with corresponding number
-            element_row = file_rows[i+1]
-            for element in element_row[:-1]: # last element is empty due to DipTrace export...
-                # parsing CSV row
-                refDes,pinDesc = element.split('.')
-                i = refDes_list.index( refDes )
-                
-                # in case that corrent element has positive and
-                # negative terminals, the negative will always be
-                # stored firstly in nets_list[i]
-                if( pinDesc == "NEG" ):
-                    nets_list[i].insert( 0,int(net_id[1]) )
-                else:
-                    nets_list[i].append( int(net_id[1]) )
+        graph.add_node( int(net_id[1]) ) # adding net with corresponding number
+        element_row = file_rows[i+1][0].strip().split(' ')
+
+        for element in element_row: # last element is empty due to DipTrace export...
+            # parsing CSV row
+            refDes,pinDesc = element.split('.')
+            i = refDes_list.index( refDes )
+            
+            # in case that corrent element has positive and
+            # negative terminals, the negative will always be
+            # stored firstly in nets_list[i]
+            if( pinDesc == "NEG" ):
+                nets_list[i].insert( 0,int(net_id[1]) )
+            else:
+                nets_list[i].append( int(net_id[1]) )
     #nets_list is filled
-    
     # iterating through nets_list and ref_des
     # and fulfilling MultiGraph structure that shall
     # be returned after
@@ -107,7 +112,9 @@ def build_graph_from_netlist_PADS( file_rows ):
         elif( refName == "C" ): #capacitor
             element_arg = Cap(refDes,group_name, edge)
         elif( refName == "B" ): # battery
-            element_arg = Battery(refDes,group_name,edge)
+            element_arg = Battery(refDes,group_name, edge)
+        elif( refName == "RES" ): # resonator voltage source
+            element_arg = Resonator_V(refDes, group_name, edge)
           
         graph.add_edge( *edge, element=element_arg )
         
@@ -115,5 +122,5 @@ def build_graph_from_netlist_PADS( file_rows ):
 
 def build_graph_from_file_PADS( file_path ):
     with open( file_path, "r" ) as file:
-        rows = list(csv.reader(file, delimiter=' '))
+        rows = list(csv.reader(file, delimiter=','))
     return build_graph_from_netlist_PADS( rows )

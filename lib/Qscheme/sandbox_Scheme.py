@@ -17,6 +17,7 @@ from IPython.display import display
 
 
 from SI import e,h
+from variables import Var
 
 if( __name__ == "__main__" ):
 
@@ -29,8 +30,7 @@ if( __name__ == "__main__" ):
     Csh = 51e-15
     
     current_dir = "C:\\Users\\user\\Documents\\Qdev\\qubit_simulations\\Qutip_Plus_DipTrace"
-    scheme = Scheme(file_path=current_dir + "\\" + "3JJ_noV.net")
-    alpha_J = scheme.elements["J4"]
+    scheme = Scheme(file_path=current_dir + "\\" + "3JJ_V.net")
     
     # changing symbols for those elements that belong to the same group
     group_names = ["JosType1","JosType2","C1"]
@@ -38,34 +38,31 @@ if( __name__ == "__main__" ):
     scheme.assign_subscripts_to_nameGroups(group_names,subscripts) # values refresh
     
     # assigning numerical values to the parameters
-    parameters = ["C_{J}","C_{J\\alpha}","C_{sh}","E_{J}","E_{J\\alpha}","\Phi_{J4}"]
-    param_vals = [C_Jb,C_Ja,Csh,E_J,alpha*E_J,f_ext]
+    parameters = ["C_{J}","C_{J\\alpha}","C_{sh}","E_{J}","E_{J\\alpha}","\Phi_{J4}","\Phi_{RES1}"]
+    param_vals = [C_Jb,C_Ja,Csh,E_J,alpha*E_J,f_ext,0]
     scheme.assign_values_to_parameters(parameters,param_vals)
-    alpha_J.enable_ext_flux()
     
-    # printing hamiltonian
+    ## printing hamiltonian
     display(scheme.Hc_sym_cooperN)
     display(scheme.Hj_sym_cooperN)
     display(scheme.C_matrix_sym)
 
-    ### SIMULATION ###
-    cooper_N = 4
-    N_pts = 21
+    ### SIMULATION # ##
+    cooper_N = 3
+    N_pts = 6
     sim = ss.SchemeSimulator(scheme,cooper_N)
-    
-    
-    mesh = collections.OrderedDict([["\Phi_{J4}",np.linspace(0.4,0.6,21)]])
-    
-    sim.find_eigensystem_params_product(mesh,3)
-    x = mesh["\Phi_{J4}"]
-    evals_list = np.array(sim.evals_list)
-    y = evals_list[:,1] - evals_list[:,0]
-    plt.plot( x, y )
-    plt.show()
-    
+    print(scheme.fundamental_cycles_info_str())
+    print(scheme.variables_info_str())    
+    sweep_var = scheme.elements["J4"].f_ext
+    mesh = collections.OrderedDict([[sweep_var.sym,np.linspace(0.4,0.6,21)]])
+    sim.find_eigensystem_params_product(mesh,4)
 
-    #display(scheme.Hc_sym_cooperN)
-    #display(scheme.Hj_sym_cooperN)
-    #display(scheme.C_matrix_sym[0])  
-    #display(sympy.sympify((scheme.C_matrix_sym)**(-1)))
+    ### VISUALIZATION ###    
+    fixed_vars = [var for var in scheme.params.values() if(var.sym != sweep_var.sym)]
+    spectr_idxs = [0,1]
+    sim.plot2D_evals_from_var(sweep_var,
+                              fixed_vars,
+                              spectr_idxs)
+    
+    
         

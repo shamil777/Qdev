@@ -14,6 +14,7 @@ class Var():
                 sym = sympy.Symbol(sym)
             except TypeError as e:
                 sym  = sympy.sympify(sym)
+                
         self.sym = sym
         self.val = val
         

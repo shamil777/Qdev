@@ -1,5 +1,7 @@
-import numpy as np
 import itertools
+
+import numpy as np
+import matplotlib.pyplot as plt
 
 class SchemeSimulator:
     def __init__(self, scheme, cooperN):
@@ -10,7 +12,7 @@ class SchemeSimulator:
         self.einvects_list =[]
         self.evals_list = []
     
-    def find_eigensystem(self,eigvals_N):
+    def find_eigensystem_internal(self,eigvals_N):
         self.scheme._construct_Hc_num_cooperN(self.cooperN)
         self.scheme._construct_Hj_num_cooperN(self.cooperN)
         H =  self.scheme.Hc_num_cooperN + self.scheme.Hj_num_cooperN
@@ -28,20 +30,93 @@ class SchemeSimulator:
             params - OrderedDict {"var1_name":[var1_val1,var1_val2, ... ,var1_valN1]}
         
         '''
+        error_symbols = self.check_vars_sufficiency(params)
+        if( len(error_symbols) != 0 ):
+            print("values for following symbols are not specified:" )
+            print(error_symbols)
+            return
+        
         vals_lists = [val for val in params.values()]
         params_list = list(params.keys())
         mesh = itertools.product(*vals_lists)
         
         for point in mesh:
             self.scheme.assign_values_to_parameters(params_list,point)                
-            evals,einvects = self.find_eigensystem(eigvals_N)
+            evals,einvects = self.find_eigensystem_internal(eigvals_N)
             
             self.points.append(self.scheme.get_params_values())
             self.einvects_list.append(einvects)
             self.evals_list.append(evals)
             
-    def plot_evals_from( self, mutable_vars, fixed_vars, evals_idxs ):
-        pass
+        self.points = np.array(self.points)
+        self.einvects_list = np.array(self.einvects_list)
+        self.evals_list = np.array(self.evals_list)
+    
+    def check_vars_sufficiency(self,params):
+        syms_list = [sym for sym in params]
+        error_syms = []
+        for var in self.scheme.params.values():
+            if( var.sym in syms_list ):
+                continue
+            elif( var.val is None ):
+                error_syms.append(var.sym)
+        
+        return error_syms
+    
+    def plot2D_evals_from_var( self, sweep_var, fixed_vars, spectr_idxs ):
+        '''
+        @description:
+        @parameters:
+            sweep_var - variable along the x axis of the plot
+            fixed_vars - list with fixed variables
+        '''
+        params_keys = list(self.scheme.params.keys())
+        
+        # collect all points corresponding to fixed vars
+        # Optimized in way that all array checking is performed
+        # inside the numpy
+        
+        # constructing byte-mask for points
+        fixed_vars_mask = np.ones(len(self.scheme.params), dtype=np.float64)
+        
+        sweep_var_idx = list(params_keys).index(sweep_var.sym)
+        fixed_vars_mask[sweep_var_idx] = 0
+        
+        # rebuilding fixed_vars into point-compatible format
+        fixed_vars_as_point = np.zeros(len(fixed_vars_mask), dtype=np.float64)
+        
+        # collecting points of interest, by iterating through
+        # all data and checking
+        for i,fixed_var in enumerate(fixed_vars):
+            fixed_param_true_idx = params_keys.index(fixed_var.sym)
+            fixed_vars_as_point[fixed_param_true_idx] += fixed_vars[i].val
+            
+        # collecting points of interest indexes
+        points_idxs = []
+        for i,point in enumerate(self.points):
+            if( (point*fixed_vars_mask - fixed_vars_as_point).all() == 0 ):
+                points_idxs.append(i)
+        
+        # gathering x,y data 
+        x = self.points[points_idxs,sweep_var_idx]
+        
+        # gathering y-data
+        y_list = []*len(spectr_idxs)
+        for idx in spectr_idxs:
+            y_list.append(self.evals_list[points_idxs,idx+1] - self.evals_list[points_idxs,0])
+        
+        # plotting
+        for idx,y in zip(spectr_idxs,y_list):
+            plt.plot(x,y, label="$E_" + str(idx+1) + " - E_0$")
+            
+        # plot cosmetics
+        plt.ylabel(r"E, GHz")
+        plt.xlabel(r"$" + str(sweep_var.sym) + "$")
+        plt.legend()
+        plt.grid()
+        
+        plt.show()
+        
             
                 
             
