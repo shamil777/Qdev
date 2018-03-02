@@ -21,20 +21,25 @@ class SchemeSimulator:
         return np.array(evals), einvects
     
     
-    def find_eigensystem_params_product(self,params,eigvals_N):
+    def find_eigensystem_internal_params_product(self,params,eigvals_N):
         '''
         @description:
             Calculates eigensystem at every point in mesh
             that is constructed by outer product of params values lists
         @parameters:
-            params - OrderedDict {"var1_name":[var1_val1,var1_val2, ... ,var1_valN1]}
+            params - OrderedDict {"var1_sym":[var1_val1,var1_val2, ... ,var1_valN1],...}
         
         '''
+        
+        
         error_symbols = self.check_vars_sufficiency(params)
         if( len(error_symbols) != 0 ):
             print("values for following symbols are not specified:" )
             print(error_symbols)
             return
+        
+        params = self.convert_single_to_lists(params)
+        print(params)
         
         vals_lists = [val for val in params.values()]
         params_list = list(params.keys())
@@ -42,6 +47,7 @@ class SchemeSimulator:
         
         for point in mesh:
             self.scheme.assign_values_to_parameters(params_list,point)                
+            print( [(var.sym,var.val) for var in self.scheme.params.values()] )
             evals,einvects = self.find_eigensystem_internal(eigvals_N)
             
             self.points.append(self.scheme.get_params_values())
@@ -51,7 +57,15 @@ class SchemeSimulator:
         self.points = np.array(self.points)
         self.einvects_list = np.array(self.einvects_list)
         self.evals_list = np.array(self.evals_list)
-    
+        print(self.evals_list[:,1]-self.evals_list[:,0])
+        
+    def convert_single_to_lists(self,params):
+        for param_sym,param_val in params.items():
+            if( not isinstance(param_val,list) ):
+                params[param_sym] = [param_val]
+                
+        return params
+                
     def check_vars_sufficiency(self,params):
         syms_list = [sym for sym in params]
         error_syms = []
@@ -103,11 +117,12 @@ class SchemeSimulator:
         # gathering y-data
         y_list = []*len(spectr_idxs)
         for idx in spectr_idxs:
-            y_list.append(self.evals_list[points_idxs,idx+1] - self.evals_list[points_idxs,0])
+            # y_list contains E_idx - E_0 for all idx in specr_idx
+            y_list.append(self.evals_list[points_idxs,idx[1]] - self.evals_list[points_idxs,idx[0]])
         
         # plotting
         for idx,y in zip(spectr_idxs,y_list):
-            plt.plot(x,y, label="$E_" + str(idx+1) + " - E_0$")
+            plt.plot(x,y, label="$E_" + str(idx[1]) + " - E_"+ str(idx[0]) + "$")
             
         # plot cosmetics
         plt.ylabel(r"E, GHz")
@@ -122,7 +137,7 @@ class SchemeSimulator:
             
             
         
-
+### USEFULL OLD CODE THAT CAN BE USED IN THE FUTURE ###
 
 def array_eins_from_params_product(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,eigvals_N_pts):
     arr_evals = []

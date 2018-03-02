@@ -16,7 +16,7 @@ import sympy
 import networkx as nx
 
 import SI
-import Qscheme.schematic._netlist_parser as nl
+from Qscheme.schematic import _netlist_parser as nl
 import Qscheme.variables as vs
 
 from IPython.display import display
@@ -98,7 +98,7 @@ class Scheme():
     
     
     def find_fundamental_cycles(self):
-        tmp_graph = self.min_span_tree.copy() # not a multigraph
+        tmp_graph = nx.Graph(self.min_span_tree.copy()) # not a multigraph
         
         # iterating over each edge that does not belong to the spanning tree
         for element_class in self.flux_elements.values():
