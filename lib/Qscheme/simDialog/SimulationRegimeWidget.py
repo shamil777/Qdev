@@ -6,9 +6,10 @@ from .SLBase import SLBase
 class SimulationRegimeWidget(QtWidgets.QWidget,SLBase):
     def __init__(self, parent=None, flags=Qt.WindowFlags()):
         super(SimulationRegimeWidget,self).__init__(parent,flags)
-        SLBase.__init__(self)
+        
         
         self.cooperN = 5
+        self._fill_SL_dicts()
         
         self.init_GUI()
         
@@ -72,7 +73,10 @@ class SimulationRegimeWidget(QtWidgets.QWidget,SLBase):
         
     def cooper_N_LineEdit_editing_finished(self):
         self.cooperN = int( self.cooper_N_LineEdit.text() )
-        
+    
+    def _fill_SL_dicts(self):
+        pass
+    
     def transfer_internal_to_widget(self):
         print("transfer invoked in SimulationRegimeWidget")
             

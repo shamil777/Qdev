@@ -5,9 +5,9 @@ from .SLBase import SLBase
 
 class AdditionalVarsWidget(QtWidgets.QWidget,SLBase):
     def __init__(self, parent=None, flags=Qt.WindowFlags()):
-        super(AdditionalVarsWidget,self).__init__(parent,flags)
-        SLBase.__init__(self)        
+        super(AdditionalVarsWidget,self).__init__(parent,flags)      
         
+        self._fill_SL_dicts()
         self.init_GUI()
         
     def init_GUI(self):
@@ -22,7 +22,10 @@ class AdditionalVarsWidget(QtWidgets.QWidget,SLBase):
             grid.addWidget(val_str,i,1)
             
         self.show()
-            
+    
+    def _fill_SL_dicts(self):
+        pass
+    
     def transfer_internal_to_widget(self):
         print("transfer invoked in AdditionalVarsWidget")
         

@@ -14,14 +14,19 @@ import pickle
 from .SLBase import SLBase
 
 class SimWindow(QtWidgets.QMainWindow,SLBase):
-    def __init__(self,simulator):
+    def __init__(self,simulator):        
         super(SimWindow,self).__init__()
-        SLBase.__init__(self)
         
         self.setGeometry(100,100,500,300)
         self.setWindowTitle("Qcheme")
         
         self.simulator = simulator
+        self.subscripts_widget = SubscriptsWidget(self)
+        self.additional_vars_widget = AdditionalVarsWidget(self)
+        self.simulation_regime_widget = SimulationRegimeWidget(self)
+        self.parameter_setup_widget = ParametersSetupWidget(self)        
+
+        self._fill_SL_dicts()
         
         extractAction = QtWidgets.QAction("&Quit",self)
         extractAction.setShortcut("Ctrl+Q")
@@ -57,17 +62,7 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         central_widget = QtWidgets.QWidget()
         self.setCentralWidget(central_widget)
         central_grid_layout = QtWidgets.QGridLayout()
-        central_widget.setLayout(v_layout)
-        
-        self.subscripts_widget = SubscriptsWidget(self)
-        self.additional_vars_widget = AdditionalVarsWidget(self)
-        self.simulation_regime_widget = SimulationRegimeWidget(self)
-        self.parameter_setup_widget = ParametersSetupWidget(self)
-        self.SL_children = [self.subscripts_widget,
-                            self.additional_vars_widget,
-                            self.simulation_regime_widget,
-                            self.parameter_setup_widget]
-        
+        central_widget.setLayout(v_layout)        
         
         central_grid_layout.addWidget(self.subscripts_widget,0,0)
         central_grid_layout.addWidget(self.additional_vars_widget,0,1)
@@ -95,7 +90,7 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         fixed_vars = []
         
         param_intervals = self.parameter_setup_widget.param_intervals
-        
+
         mesh = OrderedDict()
         for param_sym in param_intervals:
             param_interval = param_intervals[param_sym]
@@ -107,7 +102,7 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
                 fixed_vars.append( fixed_var )
                 mesh[fixed_var.sym] = fixed_var.val
         
-        print(mesh)
+        print("\nmesh: ",mesh)
         self.simulator.find_eigensystem_internal_params_product(mesh,4)
         
         spectr_idxs = [[0,1],[1,2],[2,3]]
@@ -117,19 +112,27 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         sim.plot2D_evals_from_var(sweep_var,
                                   fixed_vars,
                                   spectr_idxs)
+     
+    def _fill_SL_dicts(self):
+        self.SL_attributes_dict["simulator"] = self.simulator
+        self.SL_children_dict["subscripts_widget"] = self.subscripts_widget
+        self.SL_children_dict["additional_vars_widget"] = self.additional_vars_widget
+        self.SL_children_dict["simulation_regime_widget"] = self.simulation_regime_widget
+        self.SL_children_dict["parameter_setup_widget"] = self.parameter_setup_widget
         
-
     def file_load(self):
-        #name = QtWidgets.QFileDialog.getOpenFileName(self,"Open File Name")[0]
-        self.load_from_dict_and_visualize(dict())
+        name = QtWidgets.QFileDialog.getOpenFileName(self,"Open File Name","Qscheme files","*.qsch")[0]
+        with open(name,"rb") as file:
+            load_dict = pickle.load(file)
+        self.load_from_dict_tree(load_dict)
+        self.transfer_internal_to_widget_tree()
             
     def file_save(self):
-        name = QtWidgets.QFileDialog.getSaveFileName(self,"Open File Name","123","1234")[0]
-        print(name)
-        file = open(name,"w")
+        name = QtWidgets.QFileDialog.getSaveFileName(self,"Open File Name","","*.qsch")[0]          
         
-        with file:
-            pickle.dump()
+        dump_dict = self.return_save_dict()
+        with open(name,"wb") as file:
+            pickle.dump(dump_dict,file)
     
     def printChildren(self,obj):
         #print( "children of ", obj )

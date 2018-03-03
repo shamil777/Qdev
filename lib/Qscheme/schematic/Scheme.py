@@ -284,6 +284,7 @@ class Scheme():
         self._construct_ops(cooper_N)
         self.Hc_num_cooperN = 0
         subs_dict = {var.sym:var.val for var in self.params.values()}
+        print(subs_dict)
         C_inv_num = np.array( ((self.C_matrix_sym)**-1).subs(subs_dict) ).astype(np.float64)
         C_inv_num *= 2*(SI.e.val)**2/(SI.h.val*10**9)   
         for i in range(1,self.nodes_N):

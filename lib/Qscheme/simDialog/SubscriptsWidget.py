@@ -8,12 +8,13 @@ from .SLBase import SLBase
 class SubscriptsWidget(QtWidgets.QWidget,SLBase):
     def __init__(self, parent=None, flags=Qt.WindowFlags()):
         super(SubscriptsWidget,self).__init__(parent,flags)
-        SLBase.__init__(self)
         
         self.ref_to_parent = self.parent()
         
         self.group_name_subscripts = OrderedDict()        
         self.subscript_lineEdits = OrderedDict()
+        
+        self._fill_SL_dicts()
         
         self.init_GUI()
         
@@ -47,14 +48,17 @@ class SubscriptsWidget(QtWidgets.QWidget,SLBase):
         
         self.show()
         
+    
+    def _fill_SL_dicts(self):
+        pass
+    
     def assign_button_clicked_handler(self):
         scheme = self.ref_to_parent.simulator.scheme
         scheme.assign_subscripts_to_nameGroups(list(self.group_name_subscripts.keys()),list(self.group_name_subscripts.values()))
         self.ref_to_parent.parameter_setup_widget.refresh_data()
         
     def editing_finished_handler(self):        
-        signal_source = self.sender()
-        print("editing finished handlerL subscriptsWidget class" )        
+        signal_source = self.sender()       
         for group_name in self.group_name_subscripts.keys():
             if( signal_source == self.subscript_lineEdits[group_name] ):
                 self.group_name_subscripts[group_name] = signal_source.text()
