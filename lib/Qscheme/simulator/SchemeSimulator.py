@@ -3,6 +3,9 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 
+import networkx as nx
+
+
 class SchemeSimulator:
     def __init__(self, scheme, cooperN):
         self.scheme = scheme
@@ -30,8 +33,7 @@ class SchemeSimulator:
             params - OrderedDict {"var1_sym":[var1_val1,var1_val2, ... ,var1_valN1],...}
         
         '''
-        
-        
+                
         error_symbols = self.check_vars_sufficiency(params)
         if( len(error_symbols) != 0 ):
             print("values for following symbols are not specified:" )
@@ -39,7 +41,7 @@ class SchemeSimulator:
             return
         
         params = self.convert_single_to_lists(params)
-        print(params)
+        #print(params)
         
         vals_lists = [val for val in params.values()]
         params_list = list(params.keys())
@@ -47,21 +49,19 @@ class SchemeSimulator:
         
         for point in mesh:
             self.scheme.assign_values_to_parameters(params_list,point)                
-            print( [(var.sym,var.val) for var in self.scheme.params.values()] )
+            #print( [(var.sym,var.val) for var in self.scheme.params.values()] )
             evals,einvects = self.find_eigensystem_internal(eigvals_N)
             
             self.points.append(self.scheme.get_params_values())
             self.einvects_list.append(einvects)
             self.evals_list.append(evals)
             
-        self.points = np.array(self.points)
-        self.einvects_list = np.array(self.einvects_list)
-        self.evals_list = np.array(self.evals_list)
-        print(self.evals_list[:,1]-self.evals_list[:,0])
+        self.graph() = _graph_temp
+        #print(self.evals_list[:,1]-self.evals_list[:,0])
         
     def convert_single_to_lists(self,params):
         for param_sym,param_val in params.items():
-            if( not isinstance(param_val,list) ):
+            if( not isinstance(param_val,list) and not isinstance(param_val,np.ndarray)):
                 params[param_sym] = [param_val]
                 
         return params
@@ -111,14 +111,20 @@ class SchemeSimulator:
             if( (point*fixed_vars_mask - fixed_vars_as_point).all() == 0 ):
                 points_idxs.append(i)
         
-        # gathering x,y data 
+        # gathering x,y data
+        self.points = np.array(self.points)
         x = self.points[points_idxs,sweep_var_idx]
+        self.points = list(self.points)
         
         # gathering y-data
+        self.einvects_list = np.array(self.einvects_list)
+        self.evals_list = np.array(self.evals_list)
         y_list = []*len(spectr_idxs)
         for idx in spectr_idxs:
             # y_list contains E_idx - E_0 for all idx in specr_idx
             y_list.append(self.evals_list[points_idxs,idx[1]] - self.evals_list[points_idxs,idx[0]])
+        self.einvects_list = list(self.einvects_list)
+        self.evals_list = list(self.evals_list)
         
         # plotting
         for idx,y in zip(spectr_idxs,y_list):

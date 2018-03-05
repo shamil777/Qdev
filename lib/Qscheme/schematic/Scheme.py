@@ -19,12 +19,16 @@ import SI
 from Qscheme.schematic import _netlist_parser as nl
 import Qscheme.variables as vs
 
+from .elements import ExternalForceElement
+
 from IPython.display import display
 
 class Scheme():
     def __init__(self,graph=None,file_path=None):
         self.file_path = file_path
         self.graph = graph
+        self.internal_scheme = None
+        
         self.min_span_tree = None
         self.min_span_tree_elements = OrderedDict()
         self.flux_elements = OrderedDict()
@@ -94,6 +98,12 @@ class Scheme():
         # clears and constructs new Hc, Hj and Cmatrix symbols
         # also constructing H_coupling and H_external
         # based on corresponding graph elements functions
+        temp_graph = None
+        for element_class in self.scheme.elements.values():
+            if( isinstance(element_class,ExternalForceElement) ):
+                edge = (element_class.node1,element_class.node2)
+                temp_graph = nx.contracted_edge( self.graph, edge, False )
+        
         self.refresh_symbols()
     
     
@@ -284,7 +294,7 @@ class Scheme():
         self._construct_ops(cooper_N)
         self.Hc_num_cooperN = 0
         subs_dict = {var.sym:var.val for var in self.params.values()}
-        print(subs_dict)
+
         C_inv_num = np.array( ((self.C_matrix_sym)**-1).subs(subs_dict) ).astype(np.float64)
         C_inv_num *= 2*(SI.e.val)**2/(SI.h.val*10**9)   
         for i in range(1,self.nodes_N):

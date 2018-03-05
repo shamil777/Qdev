@@ -23,9 +23,8 @@ if( __name__ == "__main__" ):
     C_Jb = 4*e.val**2/2/(h.val*E_C*10**9)
     C_Ja = alpha*C_Jb
     Csh = 51e-15
-    
     current_dir = "C:\\Users\\botan\\Documents\\Qdev\\qubit_simulations\\Qutip_Plus_DipTrace"
-    scheme = Scheme(file_path=current_dir + "\\" + "3JJ_V.net")
+    scheme = Scheme(file_path=current_dir + "\\" + "3JJ_noV.net")
     
     cooper_N = 3
     N_pts = 6

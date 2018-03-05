@@ -102,13 +102,11 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
                 fixed_vars.append( fixed_var )
                 mesh[fixed_var.sym] = fixed_var.val
         
-        print("\nmesh: ",mesh)
+        #print("\nmesh: ",mesh)
         self.simulator.find_eigensystem_internal_params_product(mesh,4)
         
         spectr_idxs = [[0,1],[1,2],[2,3]]
         sweep_var = scheme.params[list(sweep_vars_intervals.keys())[0]]
-        print(sweep_var.sym,sweep_var.val)
-        print([(var.sym,var.val) for var in fixed_vars])
         sim.plot2D_evals_from_var(sweep_var,
                                   fixed_vars,
                                   spectr_idxs)

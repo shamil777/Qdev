@@ -207,7 +207,7 @@ class SIS_JJ( Element ):
         l2 = self.scheme.l_ops[node2].val
         r1 = self.scheme.r_ops[node1].val
         r2 = self.scheme.r_ops[node2].val
-        
+
         Hj_num_cooperN += -Ej/2*(r1*l2*exp + l1*r2/exp)
         return Hj_num_cooperN
 
@@ -265,8 +265,11 @@ class Cap( Element ):
         return 0
 
         
+class ExternalForceElement( Element ):
+    def __init__(self, element_type, refDes,group_name,edge ):
+        super( ExternalForceElement,self ).__init__( element_type, refDes, group_name, edge )
 
-class Battery( Element ):
+class Battery( ExternalForceElement ):
     def __init__(self, refDes, group_name, edge ):
         super( Battery,self ).__init__( "EXT_V_SOURCE", refDes, group_name, edge )
     
@@ -300,7 +303,7 @@ class Battery( Element ):
     def _Hj_num_phase(self, *ops):
         return 0
     
-class Resonator_V( Element ):
+class Resonator_V( ExternalForceElement ):
     def __init__(self, refDes, group_name, edge ):
         super( Resonator_V,self ).__init__( "EXT_V_SOURCE", refDes, group_name, edge )
     
