@@ -1,7 +1,7 @@
 from PyQt5 import QtCore,QtWidgets
+from PyQt5.QtCore import Qt
 
 from .SubscriptsWidget import SubscriptsWidget
-from .AdditionalVarsWidget import AdditionalVarsWidget
 from .SimulationRegimeWidget import SimulationRegimeWidget
 from .ParametersSetupWidget import ParametersSetupWidget
 
@@ -22,11 +22,10 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         
         self.simulator = simulator
         self.subscripts_widget = SubscriptsWidget(self)
-        self.additional_vars_widget = AdditionalVarsWidget(self)
         self.simulation_regime_widget = SimulationRegimeWidget(self)
         self.parameter_setup_widget = ParametersSetupWidget(self)        
 
-        self._fill_SL_dicts()
+        self.fill_SL_names()
         
         extractAction = QtWidgets.QAction("&Quit",self)
         extractAction.setShortcut("Ctrl+Q")
@@ -58,18 +57,23 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
     def init_GUI(self):
         '''Drawing GUI in the main frame'''
         v_layout = QtWidgets.QVBoxLayout()
+        v_layout.setAlignment(Qt.AlignTop)
         
         central_widget = QtWidgets.QWidget()
         self.setCentralWidget(central_widget)
-        central_grid_layout = QtWidgets.QGridLayout()
+        
+        central_v_layout = QtWidgets.QVBoxLayout()
         central_widget.setLayout(v_layout)        
         
-        central_grid_layout.addWidget(self.subscripts_widget,0,0)
-        central_grid_layout.addWidget(self.additional_vars_widget,0,1)
-        central_grid_layout.addWidget(self.simulation_regime_widget,1,0)
-        central_grid_layout.addWidget(self.parameter_setup_widget,1,1)
+        central_line1_h_layout = QtWidgets.QHBoxLayout()
         
-        v_layout.addLayout(central_grid_layout)
+        central_line1_h_layout.addWidget(self.subscripts_widget)
+        central_line1_h_layout.addWidget(self.simulation_regime_widget)
+        central_v_layout.addLayout(central_line1_h_layout)        
+        
+        central_v_layout.addWidget(self.parameter_setup_widget)
+        
+        v_layout.addLayout(central_v_layout)
         
         bottom_buttons_layout = QtWidgets.QVBoxLayout()
         
@@ -78,6 +82,7 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         bottom_buttons_layout.addWidget(start_button)
         
         v_layout.addLayout(bottom_buttons_layout)
+        v_layout.addStretch(0)
         self.show()
 
     def start_button_clicked_handler(self):
@@ -111,17 +116,17 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
                                   fixed_vars,
                                   spectr_idxs)
      
-    def _fill_SL_dicts(self):
-        self.SL_attributes_dict["simulator"] = self.simulator
-        self.SL_children_dict["subscripts_widget"] = self.subscripts_widget
-        self.SL_children_dict["additional_vars_widget"] = self.additional_vars_widget
-        self.SL_children_dict["simulation_regime_widget"] = self.simulation_regime_widget
-        self.SL_children_dict["parameter_setup_widget"] = self.parameter_setup_widget
+    def fill_SL_names(self):
+        self.SL_attributes_names = ["simulator"]
+        self.SL_children_names = ["subscripts_widget",  
+                                 "simulation_regime_widget", 
+                                 "parameter_setup_widget"]
         
     def file_load(self):
         name = QtWidgets.QFileDialog.getOpenFileName(self,"Open File Name","Qscheme files","*.qsch")[0]
         with open(name,"rb") as file:
             load_dict = pickle.load(file)
+        print(load_dict)
         self.load_from_dict_tree(load_dict)
         self.transfer_internal_to_widget_tree()
             
@@ -141,6 +146,6 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         #print()
         
     def transfer_internal_to_widget(self):
-        print("transfer invoked in main window")
+        pass
 
 

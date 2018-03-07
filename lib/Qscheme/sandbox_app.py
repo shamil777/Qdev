@@ -16,15 +16,8 @@ from IPython.display import display
 from SI import e,h
 
 if( __name__ == "__main__" ):
-    alpha = 0.43 
-    E_C = 17.6 # GHz
-    E_J = 86 # GHz
-    f_ext = 0.5
-    C_Jb = 4*e.val**2/2/(h.val*E_C*10**9)
-    C_Ja = alpha*C_Jb
-    Csh = 51e-15
     current_dir = "C:\\Users\\botan\\Documents\\Qdev\\qubit_simulations\\Qutip_Plus_DipTrace"
-    scheme = Scheme(file_path=current_dir + "\\" + "3JJ_noV.net")
+    scheme = Scheme(file_path=current_dir + "\\" + "2_3JJ_Ccoupled_noV.net")
     
     cooper_N = 3
     N_pts = 6

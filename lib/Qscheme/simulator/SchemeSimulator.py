@@ -15,6 +15,9 @@ class SchemeSimulator:
         self.einvects_list =[]
         self.evals_list = []
     
+    def simulate_from_GUI(self,params_dict):
+        print( "simulate from GUI invoked" )
+    
     def find_eigensystem_internal(self,eigvals_N):
         self.scheme._construct_Hc_num_cooperN(self.cooperN)
         self.scheme._construct_Hj_num_cooperN(self.cooperN)
@@ -24,7 +27,18 @@ class SchemeSimulator:
         return np.array(evals), einvects
     
     
-    def find_eigensystem_internal_params_product(self,params,eigvals_N):
+    def find_eigensystem_on_mesh(self,params_list,mesh,eigvals_N):
+        for point in mesh:
+            print("finding eigval in point: '\n'{0} = {1}".format(params_list,point))
+            self.scheme.assign_values_to_parameters(params_list,point)                
+            #print( [(var.sym,var.val) for var in self.scheme.params.values()] )
+            evals,einvects = self.find_eigensystem_internal(eigvals_N)
+            
+            self.points.append(self.scheme.get_params_values())
+            self.einvects_list.append(einvects)
+            self.evals_list.append(evals)
+    
+    def find_eigensystem_internal_product(self,params,eigvals_N):
         '''
         @description:
             Calculates eigensystem at every point in mesh
@@ -33,7 +47,7 @@ class SchemeSimulator:
             params - OrderedDict {"var1_sym":[var1_val1,var1_val2, ... ,var1_valN1],...}
         
         '''
-                
+        print(params)      
         error_symbols = self.check_vars_sufficiency(params)
         if( len(error_symbols) != 0 ):
             print("values for following symbols are not specified:" )
@@ -45,20 +59,52 @@ class SchemeSimulator:
         
         vals_lists = [val for val in params.values()]
         params_list = list(params.keys())
+        
         mesh = itertools.product(*vals_lists)
-        
-        for point in mesh:
-            self.scheme.assign_values_to_parameters(params_list,point)                
-            #print( [(var.sym,var.val) for var in self.scheme.params.values()] )
-            evals,einvects = self.find_eigensystem_internal(eigvals_N)
+
+        self.find_eigensystem_on_mesh(params_list,mesh,eigvals_N)
             
-            self.points.append(self.scheme.get_params_values())
-            self.einvects_list.append(einvects)
-            self.evals_list.append(evals)
-            
-        self.graph() = _graph_temp
         #print(self.evals_list[:,1]-self.evals_list[:,0])
+    
+    def find_eigensystem_internal_parametric(self,params,eigvals_N):
+        '''
+        @description:
+            Calculates eigensystem at every point in mesh
+            that is constructed params values lists
+        @parameters:
+            params - OrderedDict {"var1_sym":[var1_val1, ... ,var1_valN1],
+                                  "var2_sym":[var1_val1, ... ,var1_valN1]}
+                     Length of all lists should be equal, if not, lists which
+                     length is lesser than maximal will be extended by repeating
+                     its elemenets starting from the beggining.        
+        '''
+        error_symbols = self.check_vars_sufficiency(params)
+        if( len(error_symbols) != 0 ):
+            print("values for following symbols are not specified:" )
+            print(error_symbols)
+            return
         
+        params = self.convert_single_to_lists(params)
+        max_n_vals = max( list(map( len, params.values() )) )
+        # filling vals_lists so, that all parameters lists
+        # are having the same length.
+        # With additional elements,
+        # that are obtained by periodically repeating list elements
+        # from the beggining of the list.
+        vals_lists = []
+        for sym,val in params.items():
+            n_vals = len(val)
+            if( n_vals < max_n_vals ):
+                vals_lists.append([params[sym][i%n_vals] for i in range(max_n_vals)])
+            elif( n_vals == max_n_vals ):
+                vals_lists.append(params[sym])
+            
+        params_list = list(params.keys())
+        mesh = zip(*vals_lists)
+        print(mesh)
+        self.find_eigensystem_on_mesh(params_list,mesh,eigvals_N)
+        
+    
     def convert_single_to_lists(self,params):
         for param_sym,param_val in params.items():
             if( not isinstance(param_val,list) and not isinstance(param_val,np.ndarray)):

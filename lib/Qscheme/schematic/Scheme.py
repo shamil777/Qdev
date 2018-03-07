@@ -57,7 +57,6 @@ class Scheme():
         # passed as an argument
         if( self.graph is None ):
                 self.graph_from_file(file_path)
-        
         # initializing scheme node variables (only symbolic part)
         self.nodes_N = len(self.graph)        
         self.r_ops, self.l_ops = \
@@ -97,15 +96,17 @@ class Scheme():
         
         # clears and constructs new Hc, Hj and Cmatrix symbols
         # also constructing H_coupling and H_external
-        # based on corresponding graph elements functions
+        # based on corresponding graph elements functions        
+        self.refresh_symbols()
+        
+        # temporary invalid code:
+        '''
         temp_graph = None
         for element_class in self.scheme.elements.values():
             if( isinstance(element_class,ExternalForceElement) ):
                 edge = (element_class.node1,element_class.node2)
                 temp_graph = nx.contracted_edge( self.graph, edge, False )
-        
-        self.refresh_symbols()
-    
+        '''
     
     def find_fundamental_cycles(self):
         tmp_graph = nx.Graph(self.min_span_tree.copy()) # not a multigraph

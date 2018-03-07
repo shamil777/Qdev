@@ -1,0 +1,22 @@
+*PADS-PCB*
+*PART*
+J1     ,JJ_mini,
+J2     ,JJ_large,
+J3     ,JJ_large,
+J4     ,JJ_mini,
+J5     ,JJ_large,
+J6     ,JJ_large,
+C1     ,C1,
+
+*NET*
+*SIGNAL* Net_2
+J1.1 J2.1 C1.1 
+*SIGNAL* Net_1
+J2.2 J3.1 
+*SIGNAL* Net_0
+J1.2 J3.2 J4.2 J6.2 
+*SIGNAL* Net_3
+J4.1 J5.1 C1.2 
+*SIGNAL* Net_4
+J5.2 J6.1 
+*END*

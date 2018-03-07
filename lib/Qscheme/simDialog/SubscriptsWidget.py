@@ -14,7 +14,7 @@ class SubscriptsWidget(QtWidgets.QWidget,SLBase):
         self.group_name_subscripts = OrderedDict()        
         self.subscript_lineEdits = OrderedDict()
         
-        self._fill_SL_dicts()
+        self.fill_SL_names()
         
         self.init_GUI()
         
@@ -49,13 +49,13 @@ class SubscriptsWidget(QtWidgets.QWidget,SLBase):
         self.show()
         
     
-    def _fill_SL_dicts(self):
-        pass
+    def fill_SL_names(self):
+        self.SL_attributes_names = ["group_name_subscripts"]
     
     def assign_button_clicked_handler(self):
         scheme = self.ref_to_parent.simulator.scheme
         scheme.assign_subscripts_to_nameGroups(list(self.group_name_subscripts.keys()),list(self.group_name_subscripts.values()))
-        self.ref_to_parent.parameter_setup_widget.refresh_data()
+        self.ref_to_parent.parameter_setup_widget.subscripts_changed()
         
     def editing_finished_handler(self):        
         signal_source = self.sender()       
@@ -65,6 +65,7 @@ class SubscriptsWidget(QtWidgets.QWidget,SLBase):
                 return
             
     def transfer_internal_to_widget(self):
-        print("transfer invoked in SubscriptWidget")
+        for key,value in self.subscript_lineEdits.items():
+            value.setText(self.group_name_subscripts[key])
         
         

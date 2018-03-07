@@ -4,17 +4,21 @@ from PyQt5.QtCore import Qt
 from .SLBase import SLBase
 
 class SimulationRegimeWidget(QtWidgets.QWidget,SLBase):
+    simulation_basis_strs = ["Node cooper pair numbers","Node phases"]
+    subsystem_choice_strs = ["Internal","External","Whole system"]
     def __init__(self, parent=None, flags=Qt.WindowFlags()):
         super(SimulationRegimeWidget,self).__init__(parent,flags)
         
-        
         self.cooperN = 5
-        self._fill_SL_dicts()
+        self.simulation_basis = None
+        self.subsystem_choice = None
         
         self.init_GUI()
+        self.fill_SL_names()
         
     def init_GUI(self):
         v_layout = QtWidgets.QVBoxLayout()
+        v_layout.setAlignment(Qt.AlignTop)
         v_layout.setSpacing(10)
         self.setLayout(v_layout)
         
@@ -26,22 +30,25 @@ class SimulationRegimeWidget(QtWidgets.QWidget,SLBase):
         subsys_comboBox_layout = QtWidgets.QHBoxLayout()
         
         subsys_label = QtWidgets.QLabel("subsystem: ",self)
-        subsys_comboBox = QtWidgets.QComboBox()
-        subsys_comboBox.addItems(["Internal","External","Internal coupling","External coupling","All"])
+        self.subsys_comboBox = QtWidgets.QComboBox()
+        self.subsys_comboBox.addItems(self.subsystem_choice_strs)
+        self.subsys_comboBox.currentIndexChanged.connect(self.subsys_comboBox_changed_handler)
+        self.subsys_comboBox_changed_handler()
         
         subsys_comboBox_layout.addWidget(subsys_label)
-        subsys_comboBox_layout.addWidget(subsys_comboBox)
+        subsys_comboBox_layout.addWidget(self.subsys_comboBox)
         
         # 3rd from top
         simType_hLayout = QtWidgets.QHBoxLayout()
         
-        simType_label = QtWidgets.QLabel("type: ",self)
-        simType_comboBox = QtWidgets.QComboBox(self)
-        simType_comboBox.addItem("Single point")
-        simType_comboBox.addItem("Parameters product sweep")
+        basis_label = QtWidgets.QLabel("basis: ",self)
+        self.basis_comboBox = QtWidgets.QComboBox(self)
+        self.basis_comboBox.addItems(self.simulation_basis_strs)
+        self.basis_comboBox.currentIndexChanged.connect(self.basis_comboBox_changed_handler)
+        self.basis_comboBox_changed_handler()
         
-        simType_hLayout.addWidget(simType_label)
-        simType_hLayout.addWidget(simType_comboBox)
+        simType_hLayout.addWidget(basis_label)
+        simType_hLayout.addWidget(self.basis_comboBox)
         
         # 4th from top
         cooper_N_hLayout = QtWidgets.QHBoxLayout()
@@ -74,11 +81,26 @@ class SimulationRegimeWidget(QtWidgets.QWidget,SLBase):
     def cooper_N_LineEdit_editing_finished(self):
         self.cooperN = int( self.cooper_N_LineEdit.text() )
     
-    def _fill_SL_dicts(self):
-        pass
+    def subsys_comboBox_changed_handler(self):
+        self.subsystem_choice = self.subsys_comboBox.currentText()
+        
+    def basis_comboBox_changed_handler(self):
+        self.simulation_basis = self.basis_comboBox.currentText()
+    
+    
+    def fill_SL_names(self):
+        self.SL_attributes_names = ["cooperN",
+                                   "simulation_basis",
+                                   "subsystem_choice"]
+        
     
     def transfer_internal_to_widget(self):
-        print("transfer invoked in SimulationRegimeWidget")
+        self.basis_comboBox.setCurrentIndex(
+                self.simulation_basis_strs.index(self.simulation_basis)
+                )
+        self.subsys_comboBox.setCurrentIndex(
+                self.subsystem_choice_strs.index(self.subsystem_choice))
+        self.cooper_N_LineEdit.setText(str(self.cooperN))
             
         
         
