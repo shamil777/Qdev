@@ -55,7 +55,7 @@ class SubscriptsWidget(QtWidgets.QWidget,SLBase):
     def assign_button_clicked_handler(self):
         scheme = self.ref_to_parent.simulator.scheme
         scheme.assign_subscripts_to_nameGroups(list(self.group_name_subscripts.keys()),list(self.group_name_subscripts.values()))
-        self.ref_to_parent.parameter_setup_widget.subscripts_changed()
+        self.ref_to_parent.parameter_setup_widget.scheme_subscripts_changed_handler()
         
     def editing_finished_handler(self):        
         signal_source = self.sender()       

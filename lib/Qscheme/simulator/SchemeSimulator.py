@@ -4,19 +4,39 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import networkx as nx
+import pandas as pd
 
+from collections import OrderedDict
+
+class VarSimKind:
+    FIXED = "FIXED"
+    SWEEP = "SWEEP"
+    EQUATION = "EQUATION"
 
 class SchemeSimulator:
-    def __init__(self, scheme, cooperN):
+    simulation_subsystems_keywords = ["Internal","External","Whole system"]
+    simulation_basis_keywords = ["Node cooper pairs","Node phases"]
+    
+    def __init__(self, scheme, cooperN=None):
         self.scheme = scheme
         self.cooperN = cooperN
         
-        self.points = []
-        self.einvects_list =[]
-        self.evals_list = []
+        simulation_datasets = pd.DataFrame(columns=["scheme_var_kinds","scheme_vars_settings",
+                                                    "aux_var_kinds","aux_var_settings",
+                                                    "simulation subsystem",
+                                                    "simulation basis","simulation_basis_params"])
+        
+        
     
-    def simulate_from_GUI(self,params_dict):
-        print( "simulate from GUI invoked" )
+    def simulate(self,scheme_var_kinds,
+                      scheme_var_settings,
+                      aux_var_kinds,
+                      aux_var_settings,
+                      simulation_subsystem="Internal",
+                      simulation_basis="Node cooper pairs",
+                      **simulation_basis_params):
+        errors = self.check_vars_sufficiency(scheme_var_kinds,scheme_var_settings,
+                                    aux_var_kinds,aux_var_settings)
     
     def find_eigensystem_internal(self,eigvals_N):
         self.scheme._construct_Hc_num_cooperN(self.cooperN)
@@ -112,16 +132,33 @@ class SchemeSimulator:
                 
         return params
                 
-    def check_vars_sufficiency(self,params):
-        syms_list = [sym for sym in params]
-        error_syms = []
-        for var in self.scheme.params.values():
-            if( var.sym in syms_list ):
-                continue
-            elif( var.val is None ):
-                error_syms.append(var.sym)
+    def check_vars_sufficiency(self,scheme_var_kinds,
+                                    scheme_var_settings,
+                                    aux_var_kinds,
+                                    aux_var_settings):
+        errors = OrderedDict() # {errorCode : reason of raising an error, ...}
+        errors["GlobalErrorDescription"] = [] 
+        # Stage1
+        for scheme_var_sym,var_setting in scheme_var_settings.items():
+            if( scheme_var_kinds[scheme_var_sym] == VarSimKind.FIXED and 
+                scheme_var_settings is None ):
+                errors[scheme_var_sym] = "value is not set for fixed variable"
+            elif( scheme_var_kinds[scheme_var_sym] == VarSimKind.SWEEP ):
+                for setting in scheme_var_settings:
+                    if( setting is None ):
+                        errors[scheme_var_sym] = "value is not set for sweep variable"
+            elif( scheme_var_kinds[scheme_var_sym] == VarSimKind.EQUATION ):
+                if( scheme_var_settings is None ):
+                    errors[scheme_var_sym] = "No equation is set for equation variable"
+                    
+        if( len(list(errors.keys())) != 0 ):
+            errors["GlobalErrorDescription"].append("Scheme variables with no value encountered")
+            return errors
         
-        return error_syms
+        # Stage 2, parsing and checking 
+        
+        
+        
     
     def plot2D_evals_from_var( self, sweep_var, fixed_vars, spectr_idxs ):
         '''

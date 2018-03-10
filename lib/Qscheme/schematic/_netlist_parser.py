@@ -41,9 +41,9 @@ def _get_refDes_groupNames_PADS( file_rows ):
 def build_graph_from_netlist_PADS( file_rows ):
     ''' 
     @description:
-        parses file and MultiGraph object that represents the schematic
+        parses file and returns MultiGraph object that represents the schematic.
         Nodes are numbers of nets in the electrical schematic, 
-        enumeration is kept the same as in the file
+        enumeration is kept the same as in the file.
         Edges are electrical elements (capacitors, SIS josephson junctions etc.)
     @parameters:
         file_rows - list of lists containing csv file, e.g. list( csv.reader(file) ) 

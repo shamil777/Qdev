@@ -1,17 +1,22 @@
-from PyQt5 import QtCore,QtWidgets
+from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 
 from .SLBase import SLBase
+from ..simulator import SchemeSimulator
 
 class SimulationRegimeWidget(QtWidgets.QWidget,SLBase):
-    simulation_basis_strs = ["Node cooper pair numbers","Node phases"]
-    subsystem_choice_strs = ["Internal","External","Whole system"]
+    
     def __init__(self, parent=None, flags=Qt.WindowFlags()):
         super(SimulationRegimeWidget,self).__init__(parent,flags)
         
+        self.simulation_basis_strs = SchemeSimulator.simulation_basis_keywords
+        self.subsystem_choice_strs = SchemeSimulator.simulation_subsystems_keywords
+        
+        # Save/Load variables section START #    
         self.cooperN = 5
         self.simulation_basis = None
         self.subsystem_choice = None
+        # Save/Load variables section END #
         
         self.init_GUI()
         self.fill_SL_names()
@@ -95,6 +100,8 @@ class SimulationRegimeWidget(QtWidgets.QWidget,SLBase):
         
     
     def transfer_internal_to_widget(self):
+        print(self.simulation_basis)
+        print(self.subsystem_choice)
         self.basis_comboBox.setCurrentIndex(
                 self.simulation_basis_strs.index(self.simulation_basis)
                 )
