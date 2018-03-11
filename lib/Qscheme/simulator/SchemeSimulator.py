@@ -65,16 +65,51 @@ class SchemeSimulator:
             return errors
         
         # Stage 2, parsing and checking
-        graph_of_var_subs = nx.Graph()
+        equations_dependency_graph = nx.MultiDiGraph()
         
         var_kinds = OrderedDict(**scheme_var_kinds,**aux_var_kinds)
         var_settings = OrderedDict(**scheme_var_settings,**aux_var_settings)
         parser_dict = OrderedDict([str(var_sym),var_sym] for var_sym in var_kinds.keys())
-        for var_sym,var_kind in var_kinds.items():
-            if(var_kind == VarSimKind.EQUATION):
+        
+        # constructing equation depencies graph
+        for var_sym,var_kind_str in var_kinds.items():
+            if(var_kind_str == VarSimKind.EQUATION):
+                equations_dependency_graph.add_node(var_sym,var_kind=var_kind_str)
                 pars_result = parse_expr(var_settings[var_sym],local_dict=parser_dict)
-                print(pars_result)
-                
+                for eq_sym in pars_result.free_symbols:
+                    equations_dependency_graph.add_node(eq_sym,var_kind=var_kinds[eq_sym])
+                    equations_dependency_graph.add_edge(var_sym,eq_sym)
+        
+        # if graph contains any cycles, we terminate the simulation
+        try:
+            cycles = nx.find_cycle(equations_dependency_graph)
+        except nx.NetworkXNoCycle:
+            pass
+        else:
+            errors["DependencyError"] = "Cycle is found in equation depencies graph"
+            return errors
+        
+        # if graph leafs is not of type 'FIXED' or 'SWEEP'
+        # terminate simulation
+        
+        leaf_nodes = []
+        
+        for node_var_sym,node_var_kind in equations_dependency_graph.nodes.data('var_kind'):
+            successors = equations_dependency_graph.successors(node_var_sym)
+            # in case this node has no successors
+            if( len(list(successors)) == 0 ):
+                if( node_var_kind == VarSimKind.EQUATION ):
+                    errors["DependencyError"] = "Dependency graph contains no cycles, \
+                                                 but one or more of it's leafs has type 'EQUATION'"
+                else:
+                    leaf_nodes.append(node_var_sym)
+        
+        # creating iterator that will return dict of the parameters with their new
+        # values on each step of the mesh
+        # starting from the leaf nodes
+### NOT IMPLEMENTED YET ###        
+        
+        
         return errors
     
     def find_eigensystem_internal(self,eigvals_N):
@@ -88,7 +123,6 @@ class SchemeSimulator:
     
     def find_eigensystem_on_mesh(self,params_list,mesh,eigvals_N):
         for point in mesh:
-            print("finding eigval in point: '\n'{0} = {1}".format(params_list,point))
             self.scheme.assign_values_to_parameters(params_list,point)                
             #print( [(var.sym,var.val) for var in self.scheme.params.values()] )
             evals,einvects = self.find_eigensystem_internal(eigvals_N)

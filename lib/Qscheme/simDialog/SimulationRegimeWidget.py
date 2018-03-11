@@ -100,8 +100,6 @@ class SimulationRegimeWidget(QtWidgets.QWidget,SLBase):
         
     
     def transfer_internal_to_widget(self):
-        print(self.simulation_basis)
-        print(self.subsystem_choice)
         self.basis_comboBox.setCurrentIndex(
                 self.simulation_basis_strs.index(self.simulation_basis)
                 )

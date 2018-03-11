@@ -93,7 +93,6 @@ class VarsGridWidget(QtWidgets.QWidget,SLBase):
             
     def clear_grid_with_SL(self):
         for row_i in reversed(range(self.grid_layout.rowCount())):
-            print("clear grid: deleting row ",row_i)
             self.delete_row_save_SL(row_i)
         
         for attr_name_SL in self.SL_attributes_names:
@@ -186,7 +185,6 @@ class VarsGridWidget(QtWidgets.QWidget,SLBase):
                 self.grid_layout.addWidget(lineEdit,row_i,j+2)
             
         elif( var_kind == VarSimKind.EQUATION ):
-            print("new equation ", var_sym)
             equation_var_lineEdit = SymNum_LineEdit(var_sym,self)
             equation_var_lineEdit.editingFinished.connect(self.equation_LineEdit_editingFinished_handler)
             self.var_intervals_lineEdits[var_sym] = [equation_var_lineEdit]
@@ -217,8 +215,6 @@ class VarsGridWidget(QtWidgets.QWidget,SLBase):
         current_kind = CB_source.currentText()
         var_sym = CB_source.var_sym
         row_i = CB_source.row_i
-        print("var kind changed", var_sym)
-        print("new kind: ", current_kind)
         # erasing row like it never existed
         self.delete_row_with_SL(row_i,var_sym)
         
@@ -228,7 +224,6 @@ class VarsGridWidget(QtWidgets.QWidget,SLBase):
     
     def fixed_var_lineEdit_editingFinished_handler(self):
         lineEdit = self.sender()
-        print("fixed var linEdit finished ",lineEdit.var_sym)
         try:
             val = float(lineEdit.text())
         except ValueError:
@@ -241,7 +236,6 @@ class VarsGridWidget(QtWidgets.QWidget,SLBase):
         lineEdit = self.sender()
         var_sym = lineEdit.var_sym
         col_idx = lineEdit.col_idx
-        print("intervals line Edit editingFinished: ",var_sym," ",col_idx)        
         text_to_parse = lineEdit.text()
         try:
             if( col_idx == 0 or col_idx == 1 ):
@@ -255,7 +249,6 @@ class VarsGridWidget(QtWidgets.QWidget,SLBase):
         self.var_settings[var_sym][col_idx] = val
             
     def equation_LineEdit_editingFinished_handler(self):
-        print("equation lineEdit finished")
         lineEdit = self.sender()
         self.var_settings[lineEdit.var_sym] = lineEdit.text()
     ## SLOTS SECTION END ##
