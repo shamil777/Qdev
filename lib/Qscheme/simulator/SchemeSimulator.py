@@ -7,6 +7,8 @@ import networkx as nx
 import pandas as pd
 
 from collections import OrderedDict
+from itertools import chain
+from sympy.parsing.sympy_parser import parse_expr
 
 class VarSimKind:
     FIXED = "FIXED"
@@ -37,6 +39,41 @@ class SchemeSimulator:
                       **simulation_basis_params):
         errors = self.check_vars_sufficiency(scheme_var_kinds,scheme_var_settings,
                                     aux_var_kinds,aux_var_settings)
+        print("errors:\n",errors)
+        
+    def check_vars_sufficiency(self,scheme_var_kinds,
+                                    scheme_var_settings,
+                                    aux_var_kinds,
+                                    aux_var_settings):
+        errors = OrderedDict() # {errorCode : reason of raising an error, ...}
+        errors["GlobalErrorDescription"] = [] 
+        # Stage1
+        for scheme_var_sym,var_setting in scheme_var_settings.items():
+            if( scheme_var_kinds[scheme_var_sym] == VarSimKind.FIXED and 
+                scheme_var_settings is None ):
+                errors[scheme_var_sym] = "value is not set for fixed variable"
+            elif( scheme_var_kinds[scheme_var_sym] == VarSimKind.SWEEP ):
+                for setting in scheme_var_settings:
+                    if( setting is None ):
+                        errors[scheme_var_sym] = "value is not set for sweep variable"
+            elif( scheme_var_kinds[scheme_var_sym] == VarSimKind.EQUATION ):
+                if( scheme_var_settings is None ):
+                    errors[scheme_var_sym] = "No equation is set for equation variable"
+                    
+        if( len(list(errors.keys())) > 1 ):
+            errors["GlobalErrorDescription"].append("Scheme variables with no value encountered")
+            return errors
+        
+        # Stage 2, parsing and checking
+        graph_of_var_subs = nx.DiGraph()
+        
+        var_kinds = OrderedDict(**scheme_var_kinds,**aux_var_kinds)
+        var_settings = OrderedDict(**scheme_var_settings,**aux_var_settings)
+        parser_dict = OrderedDict([str(var_sym),var_sym] for var_sym in var_kinds.keys())
+        for var_sym,var_kind in var_kinds.items():
+            if(var_kind == VarSimKind.EQUATION):
+                pars_result = process_sympy(var_settings[var_sym])
+                print(pars_result)
     
     def find_eigensystem_internal(self,eigvals_N):
         self.scheme._construct_Hc_num_cooperN(self.cooperN)
@@ -132,34 +169,7 @@ class SchemeSimulator:
                 
         return params
                 
-    def check_vars_sufficiency(self,scheme_var_kinds,
-                                    scheme_var_settings,
-                                    aux_var_kinds,
-                                    aux_var_settings):
-        errors = OrderedDict() # {errorCode : reason of raising an error, ...}
-        errors["GlobalErrorDescription"] = [] 
-        # Stage1
-        for scheme_var_sym,var_setting in scheme_var_settings.items():
-            if( scheme_var_kinds[scheme_var_sym] == VarSimKind.FIXED and 
-                scheme_var_settings is None ):
-                errors[scheme_var_sym] = "value is not set for fixed variable"
-            elif( scheme_var_kinds[scheme_var_sym] == VarSimKind.SWEEP ):
-                for setting in scheme_var_settings:
-                    if( setting is None ):
-                        errors[scheme_var_sym] = "value is not set for sweep variable"
-            elif( scheme_var_kinds[scheme_var_sym] == VarSimKind.EQUATION ):
-                if( scheme_var_settings is None ):
-                    errors[scheme_var_sym] = "No equation is set for equation variable"
-                    
-        if( len(list(errors.keys())) != 0 ):
-            errors["GlobalErrorDescription"].append("Scheme variables with no value encountered")
-            return errors
         
-        # Stage 2, parsing and checking 
-        
-        
-        
-    
     def plot2D_evals_from_var( self, sweep_var, fixed_vars, spectr_idxs ):
         '''
         @description:
