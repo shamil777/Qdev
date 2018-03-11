@@ -28,7 +28,7 @@ class Element():
         self.node2 = edge[1]
         
         # common variables for every element
-        self.f_ext = Var("\Phi_{" + str(self.refDes) + "}")        
+        self.f_ext = Var("\Phi_" + str(self.refDes) + "")        
 
         # list of Vars from variables.py of this element parameters
         self.params = [] 
@@ -129,8 +129,8 @@ class SIS_JJ( Element ):
     def __init__(self, refDes, group_name,  edge ):     
         super( SIS_JJ,self ).__init__( "SIS_JJ", refDes, group_name, edge )
         # params with changable symbols
-        self.C = Var("C_{" + str(self.subscript) + "}")
-        self.Ej = Var("E_{" + str(self.subscript) + "}")
+        self.C = Var("C_" + str(self.subscript) + "")
+        self.Ej = Var("E_" + str(self.subscript) + "")
         
         # grouping params into list
         if( self.flux_enabled ):
@@ -140,10 +140,10 @@ class SIS_JJ( Element ):
     
     
     def _update_symbols(self):
-        self.C.sym = sympy.Symbol("C_{" + str(self.subscript) + "}")
-        self.Ej.sym = sympy.Symbol("E_{" + str(self.subscript) + "}")        
+        self.C.sym = sympy.Symbol("C_" + str(self.subscript) + "")
+        self.Ej.sym = sympy.Symbol("E_" + str(self.subscript) + "")        
         if( self.flux_enabled ):
-            self.f_ext.sym = sympy.Symbol("\Phi_{" + str(self.f_ext_subscript) + "}")
+            self.f_ext.sym = sympy.Symbol("\Phi_" + str(self.f_ext_subscript) + "")
 
 
     def _connect_to_params_list(self):
@@ -219,13 +219,13 @@ class Cap( Element ):
         super( Cap,self ).__init__( "Cap", refDes, group_name, edge )
         
         self.subscript = str(self.node1) + str(self.node2)
-        self.C = Var("C_{" + str(self.subscript) + "}")
+        self.C = Var("C_" + str(self.subscript) + "")
         self.params = [self.C]
 
             
     
     def _update_symbols(self):
-        self.C.sym = sympy.Symbol("C_{" + str(self.subscript) + "}")
+        self.C.sym = sympy.Symbol("C_" + str(self.subscript) + "")
         
     def _connect_to_params_list(self):
         self.C = self.params[0]

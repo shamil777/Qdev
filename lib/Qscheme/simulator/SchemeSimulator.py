@@ -7,8 +7,10 @@ import networkx as nx
 import pandas as pd
 
 from collections import OrderedDict
-from itertools import chain
+
 from sympy.parsing.sympy_parser import parse_expr
+
+from IPython.display import display
 
 class VarSimKind:
     FIXED = "FIXED"
@@ -46,7 +48,6 @@ class SchemeSimulator:
                                     aux_var_kinds,
                                     aux_var_settings):
         errors = OrderedDict() # {errorCode : reason of raising an error, ...}
-        errors["GlobalErrorDescription"] = [] 
         # Stage1
         for scheme_var_sym,var_setting in scheme_var_settings.items():
             if( scheme_var_kinds[scheme_var_sym] == VarSimKind.FIXED and 
@@ -60,20 +61,21 @@ class SchemeSimulator:
                 if( scheme_var_settings is None ):
                     errors[scheme_var_sym] = "No equation is set for equation variable"
                     
-        if( len(list(errors.keys())) > 1 ):
-            errors["GlobalErrorDescription"].append("Scheme variables with no value encountered")
+        if( len(list(errors.keys())) > 0 ):
             return errors
         
         # Stage 2, parsing and checking
-        graph_of_var_subs = nx.DiGraph()
+        graph_of_var_subs = nx.Graph()
         
         var_kinds = OrderedDict(**scheme_var_kinds,**aux_var_kinds)
         var_settings = OrderedDict(**scheme_var_settings,**aux_var_settings)
         parser_dict = OrderedDict([str(var_sym),var_sym] for var_sym in var_kinds.keys())
         for var_sym,var_kind in var_kinds.items():
             if(var_kind == VarSimKind.EQUATION):
-                pars_result = process_sympy(var_settings[var_sym])
+                pars_result = parse_expr(var_settings[var_sym],local_dict=parser_dict)
                 print(pars_result)
+                
+        return errors
     
     def find_eigensystem_internal(self,eigvals_N):
         self.scheme._construct_Hc_num_cooperN(self.cooperN)
