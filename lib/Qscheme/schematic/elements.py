@@ -207,7 +207,8 @@ class SIS_JJ( Element ):
         l2 = self.scheme.l_ops[node2].val
         r1 = self.scheme.r_ops[node1].val
         r2 = self.scheme.r_ops[node2].val
-
+        print("Ej = ", Ej)
+        
         Hj_num_cooperN += -Ej/2*(r1*l2*exp + l1*r2/exp)
         return Hj_num_cooperN
 

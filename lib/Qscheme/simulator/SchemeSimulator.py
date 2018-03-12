@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pandas as pd
 
+from ..variables import Var
+
 from collections import OrderedDict
 
 from sympy.parsing.sympy_parser import parse_expr
@@ -28,7 +30,7 @@ class SchemeSimulator:
         simulation_datasets = pd.DataFrame(columns=["scheme_var_kinds","scheme_vars_settings",
                                                     "aux_var_kinds","aux_var_settings",
                                                     "simulation subsystem",
-                                                    "simulation basis","simulation_basis_params"])
+                                                    "simulation basis","simulation_basis_params","result"])
         self.parameters_consistent_graph = None
         self.leafs = None
         
@@ -44,6 +46,9 @@ class SchemeSimulator:
         errors = self.check_vars_sufficiency(scheme_var_kinds,scheme_var_settings,
                                     aux_var_kinds,aux_var_settings)
         print("errors:\n",errors)
+        self.cooperN = simulation_basis_params["cooper_N"]
+        
+        result = pd.DataFrame(columns=["n","E, GHz","eigen_vec"])
         
         var_kinds = OrderedDict(**scheme_var_kinds,**aux_var_kinds)
         var_settings = OrderedDict(**scheme_var_settings,**aux_var_settings)
@@ -51,23 +56,64 @@ class SchemeSimulator:
         # creating iterator that will return dict of the parameters with their new
         # values on each step of the mesh
         # starting from the leaf nodes
-        ### NOT IMPLEMENTED YET ###  
-        sweep_var_numeric = OrderedDict()
-        fixed_var_numeric = OrderedDict()
         
+        # constructing leaf mesh
+        leaf_var_settings = OrderedDict()
         for leaf_node_sym in self.leafs:
             if( var_kinds[leaf_node_sym] == VarSimKind.SWEEP ):
-                sweep_var_numeric[leaf_node_sym] = np.linspace(*var_settings[leaf_node_sym])
+                leaf_var_settings[leaf_node_sym] = np.linspace(*var_settings[leaf_node_sym])
             elif( var_kinds[leaf_node_sym] == VarSimKind.FIXED ):
-                fixed_var_numeric[leaf_node_sym] = var_settings[leaf_node_sym]
+                leaf_var_settings[leaf_node_sym] = [var_settings[leaf_node_sym]]
+                
+        
+        leaf_mesh = itertools.product(*[itertools.product([key],val) for key,val in leaf_var_settings.items()])
+        for leaf_point in leaf_mesh:   
+            vars_point = self.get_point_from_leaf_point(leaf_point,var_settings)
+            
+            for sym,var in self.scheme.params.items():
+                var.val = vars_point[sym]
+            
+            evals,evects = self.find_eigensystem_internal(5)
+            print(evals)
                 
                 
-        sweep_vars_product = itertools.product( *list(sweep_var_numeric.items()) )
-        print( list(sweep_vars_product) )
-                
-                
+    def get_point_from_leaf_point(self,leaf_mesh_point,var_settings):
+        vars_point = OrderedDict([(var.sym,var.val) for var in self.scheme.params.values()] )
+        
+        last_filled_nodes = self.leafs
+        last_subs = OrderedDict([(sym,val) for sym,val in leaf_mesh_point])
+        
+        equation_graph = self.parameters_consistent_graph.copy()
+        while( len(last_filled_nodes) > 0 ):
+            new_filled_nodes = []
+            new_subs = OrderedDict()
+            
+            vars_point.update(last_subs)
+            
+            # substitution of last_filled_nodes into their ancestors
+            for in_edge in equation_graph.in_edges(last_filled_nodes):
+                node_sym = in_edge[0]
+                # updating equation in the ancestor node
+                parsed_eq = equation_graph.nodes[node_sym]['parsed_eq']
+                equation_graph.nodes[node_sym]['parsed_eq'] = parsed_eq.subs(last_subs)
+                    
+                # if this node is fully numeric we add it as a source to the
+                # next algorithm step
+                try:
+                    new_val = float(equation_graph.nodes[node_sym]['parsed_eq'])
+                except ValueError:
+                    continue
+                else:
+                    new_filled_nodes.append(node_sym)
+                    new_subs[node_sym] = new_val
+            
+            last_filled_nodes = new_filled_nodes
+            last_subs = new_subs
+            
+        return vars_point
                 
             
+        
         
     def check_vars_sufficiency(self,scheme_var_kinds,
                                     scheme_var_settings,
@@ -100,11 +146,14 @@ class SchemeSimulator:
         # constructing equation depencies graph
         for var_sym,var_kind_str in var_kinds.items():
             if(var_kind_str == VarSimKind.EQUATION):
-                equations_dependency_graph.add_node(var_sym,var_kind=var_kind_str)
                 pars_result = parse_expr(var_settings[var_sym],local_dict=parser_dict)
+                equations_dependency_graph.add_node(var_sym,var_kind=var_kind_str,parsed_eq=pars_result)
                 for eq_sym in pars_result.free_symbols:
                     equations_dependency_graph.add_node(eq_sym,var_kind=var_kinds[eq_sym])
                     equations_dependency_graph.add_edge(var_sym,eq_sym)
+            elif( var_kind_str == VarSimKind.FIXED or var_kind_str == VarSimKind.SWEEP ):
+                equations_dependency_graph.add_node(var_sym,var_kind=var_kind_str)
+            
         
         # if graph contains any cycles, we terminate the simulation
         try:
@@ -127,8 +176,10 @@ class SchemeSimulator:
                 if( node_var_kind == VarSimKind.EQUATION ):
                     errors["DependencyError"] = "Dependency graph contains no cycles, \
                                                  but one or more of it's leafs has type 'EQUATION'"
+                    return errors
                 else:
-                    leaf_nodes.append(node_var_sym)              
+                    leaf_nodes.append(node_var_sym)    
+                    
         self.parameters_consistent_graph = equations_dependency_graph
         self.leafs = leaf_nodes
         return errors

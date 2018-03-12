@@ -251,6 +251,10 @@ class Scheme():
             self.elements[refDes].scheme = self
     
     
+    def set_cooperN(self,cooper_N):
+        self._construct_ops(cooper_N)
+        self.cooper_N = cooper_N
+    
     def _construct_ops(self,cooper_N):
         '''
         @description:

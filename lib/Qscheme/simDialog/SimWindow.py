@@ -5,10 +5,6 @@ from .SubscriptsWidget import SubscriptsWidget
 from .SimulationRegimeWidget import SimulationRegimeWidget
 from .ParametersSetupWidget import ParametersSetupWidget
 
-import numpy as np
-from collections import OrderedDict
-from Qscheme.variables import Var
-
 from Qscheme.schematic.Scheme import Scheme
 from Qscheme.simulator import SchemeSimulator
 

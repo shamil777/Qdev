@@ -2,10 +2,7 @@
 
 import sympy
 
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "\\..\\" )
-import Qscheme.simulator.operator_constructors as oc
+from .simulator import operator_constructors as oc
 
 class Var():
     def __init__( self, sym=None,val=None ):
