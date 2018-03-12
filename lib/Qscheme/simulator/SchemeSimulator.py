@@ -29,6 +29,8 @@ class SchemeSimulator:
                                                     "aux_var_kinds","aux_var_settings",
                                                     "simulation subsystem",
                                                     "simulation basis","simulation_basis_params"])
+        self.parameters_consistent_graph = None
+        self.leafs = None
         
         
     
@@ -42,6 +44,30 @@ class SchemeSimulator:
         errors = self.check_vars_sufficiency(scheme_var_kinds,scheme_var_settings,
                                     aux_var_kinds,aux_var_settings)
         print("errors:\n",errors)
+        
+        var_kinds = OrderedDict(**scheme_var_kinds,**aux_var_kinds)
+        var_settings = OrderedDict(**scheme_var_settings,**aux_var_settings)
+        
+        # creating iterator that will return dict of the parameters with their new
+        # values on each step of the mesh
+        # starting from the leaf nodes
+        ### NOT IMPLEMENTED YET ###  
+        sweep_var_numeric = OrderedDict()
+        fixed_var_numeric = OrderedDict()
+        
+        for leaf_node_sym in self.leafs:
+            if( var_kinds[leaf_node_sym] == VarSimKind.SWEEP ):
+                sweep_var_numeric[leaf_node_sym] = np.linspace(*var_settings[leaf_node_sym])
+            elif( var_kinds[leaf_node_sym] == VarSimKind.FIXED ):
+                fixed_var_numeric[leaf_node_sym] = var_settings[leaf_node_sym]
+                
+                
+        sweep_vars_product = itertools.product( *list(sweep_var_numeric.items()) )
+        print( list(sweep_vars_product) )
+                
+                
+                
+            
         
     def check_vars_sufficiency(self,scheme_var_kinds,
                                     scheme_var_settings,
@@ -102,14 +128,9 @@ class SchemeSimulator:
                     errors["DependencyError"] = "Dependency graph contains no cycles, \
                                                  but one or more of it's leafs has type 'EQUATION'"
                 else:
-                    leaf_nodes.append(node_var_sym)
-        
-        # creating iterator that will return dict of the parameters with their new
-        # values on each step of the mesh
-        # starting from the leaf nodes
-### NOT IMPLEMENTED YET ###        
-        
-        
+                    leaf_nodes.append(node_var_sym)              
+        self.parameters_consistent_graph = equations_dependency_graph
+        self.leafs = leaf_nodes
         return errors
     
     def find_eigensystem_internal(self,eigvals_N):
@@ -266,11 +287,7 @@ class SchemeSimulator:
         plt.grid()
         
         plt.show()
-        
-            
-                
-            
-            
+
         
 ### USEFULL OLD CODE THAT CAN BE USED IN THE FUTURE ###
 
