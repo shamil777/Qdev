@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 from .SLBase import SLBase
 from ..variables import Var
-from ..simulator.SchemeSimulator import VarSimKind
+from ..simulator.SchemeSimulator import VAR_KIND
 
 class SymNum_LineEdit(QtWidgets.QLineEdit):
     def __init__(self,var_sym=None,col_idx=0,parent=None):
@@ -147,9 +147,9 @@ class VarsGridWidget(QtWidgets.QWidget,SLBase):
         self.grid_layout.addWidget(var_sym_label,row_i,0)
         
         var_kind_ComboBox = Sym_ComboBox(var_sym,row_i,self)
-        var_kind_ComboBox.addItems([VarSimKind.FIXED,
-                                   VarSimKind.SWEEP,
-                                   VarSimKind.EQUATION])
+        var_kind_ComboBox.addItems([VAR_KIND.FIXED,
+                                   VAR_KIND.SWEEP,
+                                   VAR_KIND.EQUATION])
         self.var_kinds_comboBoxes[var_sym] = var_kind_ComboBox
         if( var_sym in self.var_kinds and self.var_kinds[var_sym] is not None ):
             var_kind_ComboBox.setCurrentText(self.var_kinds[var_sym])
@@ -162,7 +162,7 @@ class VarsGridWidget(QtWidgets.QWidget,SLBase):
         
         var_kind = self.var_kinds[var_sym]
         
-        if( var_kind == VarSimKind.FIXED ):
+        if( var_kind == VAR_KIND.FIXED ):
             fixed_var_lineEdit = SymNum_LineEdit(var_sym,self)
             fixed_var_lineEdit.editingFinished.connect(self.fixed_var_lineEdit_editingFinished_handler)
             self.var_intervals_lineEdits[var_sym] = [fixed_var_lineEdit]
@@ -172,7 +172,7 @@ class VarsGridWidget(QtWidgets.QWidget,SLBase):
                 self.var_settings[var_sym] = None
             self.grid_layout.addWidget(fixed_var_lineEdit,row_i,2)
             
-        elif( var_kind == VarSimKind.SWEEP ):
+        elif( var_kind == VAR_KIND.SWEEP ):
             self.var_intervals_lineEdits[var_sym] = [SymNum_LineEdit(var_sym,0,self),
                                                          SymNum_LineEdit(var_sym,1,self), 
                                                          SymNum_LineEdit(var_sym,2,self)]
@@ -184,7 +184,7 @@ class VarsGridWidget(QtWidgets.QWidget,SLBase):
                     self.var_settings[var_sym] = [None]*3
                 self.grid_layout.addWidget(lineEdit,row_i,j+2)
             
-        elif( var_kind == VarSimKind.EQUATION ):
+        elif( var_kind == VAR_KIND.EQUATION ):
             equation_var_lineEdit = SymNum_LineEdit(var_sym,self)
             equation_var_lineEdit.editingFinished.connect(self.equation_LineEdit_editingFinished_handler)
             self.var_intervals_lineEdits[var_sym] = [equation_var_lineEdit]
@@ -306,7 +306,7 @@ class ParametersSetupWidget(QtWidgets.QWidget,SLBase):
         add_param_row_hLayout.addWidget(add_var_button)
         
         # delete button
-        delete_var_button = QtWidgets.QPushButton("add",self)
+        delete_var_button = QtWidgets.QPushButton("delete",self)
         delete_var_button.clicked.connect(self.delete_var_button_clicked_handler)
         add_param_row_hLayout.addWidget(delete_var_button) 
         self.show()

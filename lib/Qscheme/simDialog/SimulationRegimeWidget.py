@@ -2,15 +2,12 @@ from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 
 from .SLBase import SLBase
-from ..simulator import SchemeSimulator
+from ..simulator.SchemeSimulator import SIM_SUBSYS,SIM_BASIS
 
 class SimulationRegimeWidget(QtWidgets.QWidget,SLBase):
     
     def __init__(self, parent=None, flags=Qt.WindowFlags()):
         super(SimulationRegimeWidget,self).__init__(parent,flags)
-        
-        self.simulation_basis_strs = SchemeSimulator.simulation_basis_keywords
-        self.subsystem_choice_strs = SchemeSimulator.simulation_subsystems_keywords
         
         # Save/Load variables section START #    
         self.cooperN = 5
@@ -36,7 +33,9 @@ class SimulationRegimeWidget(QtWidgets.QWidget,SLBase):
         
         subsys_label = QtWidgets.QLabel("subsystem: ",self)
         self.subsys_comboBox = QtWidgets.QComboBox()
-        self.subsys_comboBox.addItems(self.subsystem_choice_strs)
+        self.subsys_comboBox.addItems([SIM_SUBSYS.INTERNAL,
+                                       SIM_SUBSYS.COUPLING,
+                                       SIM_SUBSYS.WHOLE])
         self.subsys_comboBox.currentIndexChanged.connect(self.subsys_comboBox_changed_handler)
         self.subsys_comboBox_changed_handler()
         
@@ -48,7 +47,8 @@ class SimulationRegimeWidget(QtWidgets.QWidget,SLBase):
         
         basis_label = QtWidgets.QLabel("basis: ",self)
         self.basis_comboBox = QtWidgets.QComboBox(self)
-        self.basis_comboBox.addItems(self.simulation_basis_strs)
+        self.basis_comboBox.addItems([SIM_BASIS.COOPER,
+                                      SIM_BASIS.PHASE])
         self.basis_comboBox.currentIndexChanged.connect(self.basis_comboBox_changed_handler)
         self.basis_comboBox_changed_handler()
         
@@ -100,11 +100,8 @@ class SimulationRegimeWidget(QtWidgets.QWidget,SLBase):
         
     
     def transfer_internal_to_widget(self):
-        self.basis_comboBox.setCurrentIndex(
-                self.simulation_basis_strs.index(self.simulation_basis)
-                )
-        self.subsys_comboBox.setCurrentIndex(
-                self.subsystem_choice_strs.index(self.subsystem_choice))
+        self.basis_comboBox.setCurrentText( self.simulation_basis )
+        self.subsys_comboBox.setCurrentText( self.subsystem_choice ) 
         self.cooper_N_LineEdit.setText(str(self.cooperN))
             
         

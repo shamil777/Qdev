@@ -14,18 +14,36 @@ from sympy.parsing.sympy_parser import parse_expr
 
 from IPython.display import display
 
-class VarSimKind:
+from datetime import datetime,timedelta
+
+class VAR_KIND:
     FIXED = "FIXED"
     SWEEP = "SWEEP"
     EQUATION = "EQUATION"
+    
+class SIM_SUBSYS:
+    INTERNAL = "Internal"
+    COUPLING = "Coupling"
+    WHOLE = "Whole"
+    
+class SIM_BASIS:
+    COOPER = "Cooper"
+    PHASE = "Phase"
 
 class SchemeSimulator:
     simulation_subsystems_keywords = ["Internal","External","Whole system"]
     simulation_basis_keywords = ["Node cooper pairs","Node phases"]
     
-    def __init__(self, scheme, cooperN=None):
+    def __init__(self, scheme, cooperN=None, progress_window=None):
+        self.simulation_start_time = None
+        self.time_left = None
+        self.simulation_end_time = None
+        self.dt_list = None
+        
         self.scheme = scheme
+        self.progress_window = progress_window
         self.cooperN = cooperN
+        self.completed = 0
         
         simulation_datasets = pd.DataFrame(columns=["scheme_var_kinds","scheme_vars_settings",
                                                     "aux_var_kinds","aux_var_settings",
@@ -36,22 +54,42 @@ class SchemeSimulator:
         
         
     
-    def simulate(self,scheme_var_kinds,
+    def find_eigenSystem(self,scheme_var_kinds,
                       scheme_var_settings,
                       aux_var_kinds,
                       aux_var_settings,
-                      simulation_subsystem="Internal",
-                      simulation_basis="Node cooper pairs",
+                      simulation_subsystem=SIM_SUBSYS.INTERNAL,
+                      simulation_basis=SIM_BASIS.COOPER,
+                      eigenvals_num = 5,
                       **simulation_basis_params):
+        # current time
+        self.simulation_start_time = datetime.now()
+        
+        # checking that parameters specifications
+        # are self-sufficient
         errors = self.check_vars_sufficiency(scheme_var_kinds,scheme_var_settings,
                                     aux_var_kinds,aux_var_settings)
         print("errors:\n",errors)
+        
+        ## CALCULATION SECTION START ##
+        
+        # setting up some local variables
         self.cooperN = simulation_basis_params["cooper_N"]
         
-        result = pd.DataFrame(columns=["n","E, GHz","eigen_vec"])
+        # result is stored as DataFrame object
+        result = pd.DataFrame(columns=["E, GHz","eigen_vec"])
         
+        # setting up union of the scheme and auxillary param dicts 
+        # for data access convinience
         var_kinds = OrderedDict(**scheme_var_kinds,**aux_var_kinds)
         var_settings = OrderedDict(**scheme_var_settings,**aux_var_settings)
+
+        # calculating the amount of points in parameters mesh
+        iterations_n = 1
+        for leaf_node_sym in self.leafs:
+            if( var_kinds[leaf_node_sym] == VAR_KIND.SWEEP ):
+                # multiplying by the number of points in sweep interval
+                iterations_n *= var_settings[leaf_node_sym][2]
         
         # creating iterator that will return dict of the parameters with their new
         # values on each step of the mesh
@@ -60,22 +98,59 @@ class SchemeSimulator:
         # constructing leaf mesh
         leaf_var_settings = OrderedDict()
         for leaf_node_sym in self.leafs:
-            if( var_kinds[leaf_node_sym] == VarSimKind.SWEEP ):
+            if( var_kinds[leaf_node_sym] == VAR_KIND.SWEEP ):
                 leaf_var_settings[leaf_node_sym] = np.linspace(*var_settings[leaf_node_sym])
-            elif( var_kinds[leaf_node_sym] == VarSimKind.FIXED ):
+            elif( var_kinds[leaf_node_sym] == VAR_KIND.FIXED ):
                 leaf_var_settings[leaf_node_sym] = [var_settings[leaf_node_sym]]
-                
         
+        if( self.progress_window is not None ):
+            self.progress_window.show()
+
+
+        # local variables for time management
+        self.dt_list = []
+        new_now = None
+        old_now = self.simulation_start_time
+
+        # Cycling over leaf mesh and obtaining result.
+        # Construction of dependent vars is made on the fly        
         leaf_mesh = itertools.product(*[itertools.product([key],val) for key,val in leaf_var_settings.items()])
-        for leaf_point in leaf_mesh:   
+        for iter_idx,leaf_point in enumerate(leaf_mesh):
+            # getting the rest parameter values by evaluating
+            # variables in equation tree
             vars_point = self.get_point_from_leaf_point(leaf_point,var_settings)
             
+            # putting variables into scheme class
             for sym,var in self.scheme.params.items():
                 var.val = vars_point[sym]
             
-            evals,evects = self.find_eigensystem_internal(5)
-            print(evals)
+            # matrix diagonalization
+            if( simulation_subsystem == SIM_SUBSYS.INTERNAL ):
+                evals,evects = self.find_eigensystem_internal(eigenvals_num )
+            elif( simulation_subsystem == SIM_SUBSYS.COUPLING ):
+                raise NotImplementedError
+            elif( simulation_subsystem == SIM_SUBSYS.WHOLE ):
+                raise NotImplementedError
+            
+            # storing result
+            for i in range(eigenvals_num):
+                result.loc[i] = [evals[i],evects[i]]
+            
+            # updating time structure
+            new_now = datetime.now()
+            self.dt_list.append(new_now-old_now)
+            old_now = new_now
+                        
+            # updating progress bar if necessary            
+            if( self.progress_window is not None ):
+                self.progress_window.update_progress(self,float(iter_idx + 1)/iterations_n)
                 
+            
+        print(self.dt_list)                
+        print(result)
+        
+        
+        ## CALCULATION SECTION END ##
                 
     def get_point_from_leaf_point(self,leaf_mesh_point,var_settings):
         vars_point = OrderedDict([(var.sym,var.val) for var in self.scheme.params.values()] )
@@ -122,14 +197,14 @@ class SchemeSimulator:
         errors = OrderedDict() # {errorCode : reason of raising an error, ...}
         # Stage1
         for scheme_var_sym,var_setting in scheme_var_settings.items():
-            if( scheme_var_kinds[scheme_var_sym] == VarSimKind.FIXED and 
+            if( scheme_var_kinds[scheme_var_sym] == VAR_KIND.FIXED and 
                 scheme_var_settings is None ):
                 errors[scheme_var_sym] = "value is not set for fixed variable"
-            elif( scheme_var_kinds[scheme_var_sym] == VarSimKind.SWEEP ):
+            elif( scheme_var_kinds[scheme_var_sym] == VAR_KIND.SWEEP ):
                 for setting in scheme_var_settings:
                     if( setting is None ):
                         errors[scheme_var_sym] = "value is not set for sweep variable"
-            elif( scheme_var_kinds[scheme_var_sym] == VarSimKind.EQUATION ):
+            elif( scheme_var_kinds[scheme_var_sym] == VAR_KIND.EQUATION ):
                 if( scheme_var_settings is None ):
                     errors[scheme_var_sym] = "No equation is set for equation variable"
                     
@@ -145,13 +220,13 @@ class SchemeSimulator:
         
         # constructing equation depencies graph
         for var_sym,var_kind_str in var_kinds.items():
-            if(var_kind_str == VarSimKind.EQUATION):
+            if(var_kind_str == VAR_KIND.EQUATION):
                 pars_result = parse_expr(var_settings[var_sym],local_dict=parser_dict)
                 equations_dependency_graph.add_node(var_sym,var_kind=var_kind_str,parsed_eq=pars_result)
                 for eq_sym in pars_result.free_symbols:
                     equations_dependency_graph.add_node(eq_sym,var_kind=var_kinds[eq_sym])
                     equations_dependency_graph.add_edge(var_sym,eq_sym)
-            elif( var_kind_str == VarSimKind.FIXED or var_kind_str == VarSimKind.SWEEP ):
+            elif( var_kind_str == VAR_KIND.FIXED or var_kind_str == VAR_KIND.SWEEP ):
                 equations_dependency_graph.add_node(var_sym,var_kind=var_kind_str)
             
         
@@ -173,7 +248,7 @@ class SchemeSimulator:
             successors = equations_dependency_graph.successors(node_var_sym)
             # in case this node has no successors
             if( len(list(successors)) == 0 ):
-                if( node_var_kind == VarSimKind.EQUATION ):
+                if( node_var_kind == VAR_KIND.EQUATION ):
                     errors["DependencyError"] = "Dependency graph contains no cycles, \
                                                  but one or more of it's leafs has type 'EQUATION'"
                     return errors
@@ -202,72 +277,6 @@ class SchemeSimulator:
             self.points.append(self.scheme.get_params_values())
             self.einvects_list.append(einvects)
             self.evals_list.append(evals)
-    
-    def find_eigensystem_internal_product(self,params,eigvals_N):
-        '''
-        @description:
-            Calculates eigensystem at every point in mesh
-            that is constructed by outer product of params values lists
-        @parameters:
-            params - OrderedDict {"var1_sym":[var1_val1,var1_val2, ... ,var1_valN1],...}
-        
-        '''
-        print(params)      
-        error_symbols = self.check_vars_sufficiency(params)
-        if( len(error_symbols) != 0 ):
-            print("values for following symbols are not specified:" )
-            print(error_symbols)
-            return
-        
-        params = self.convert_single_to_lists(params)
-        #print(params)
-        
-        vals_lists = [val for val in params.values()]
-        params_list = list(params.keys())
-        
-        mesh = itertools.product(*vals_lists)
-
-        self.find_eigensystem_on_mesh(params_list,mesh,eigvals_N)
-            
-        #print(self.evals_list[:,1]-self.evals_list[:,0])
-    
-    def find_eigensystem_internal_parametric(self,params,eigvals_N):
-        '''
-        @description:
-            Calculates eigensystem at every point in mesh
-            that is constructed params values lists
-        @parameters:
-            params - OrderedDict {"var1_sym":[var1_val1, ... ,var1_valN1],
-                                  "var2_sym":[var1_val1, ... ,var1_valN1]}
-                     Length of all lists should be equal, if not, lists which
-                     length is lesser than maximal will be extended by repeating
-                     its elemenets starting from the beggining.        
-        '''
-        error_symbols = self.check_vars_sufficiency(params)
-        if( len(error_symbols) != 0 ):
-            print("values for following symbols are not specified:" )
-            print(error_symbols)
-            return
-        
-        params = self.convert_single_to_lists(params)
-        max_n_vals = max( list(map( len, params.values() )) )
-        # filling vals_lists so, that all parameters lists
-        # are having the same length.
-        # With additional elements,
-        # that are obtained by periodically repeating list elements
-        # from the beggining of the list.
-        vals_lists = []
-        for sym,val in params.items():
-            n_vals = len(val)
-            if( n_vals < max_n_vals ):
-                vals_lists.append([params[sym][i%n_vals] for i in range(max_n_vals)])
-            elif( n_vals == max_n_vals ):
-                vals_lists.append(params[sym])
-            
-        params_list = list(params.keys())
-        mesh = zip(*vals_lists)
-        print(mesh)
-        self.find_eigensystem_on_mesh(params_list,mesh,eigvals_N)
         
     
     def convert_single_to_lists(self,params):

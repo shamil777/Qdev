@@ -4,6 +4,8 @@ from PyQt5.QtCore import Qt
 from .SubscriptsWidget import SubscriptsWidget
 from .SimulationRegimeWidget import SimulationRegimeWidget
 from .ParametersSetupWidget import ParametersSetupWidget
+from .subWindows.SimulationOnGoing import SimulationOnGoingWindow
+
 
 from Qscheme.schematic.Scheme import Scheme
 from Qscheme.simulator import SchemeSimulator
@@ -25,8 +27,10 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         self.scheme = None
         if( self.simulator is not None and 
             self.simulator.scheme is not None ):
-            self.scheme = self.simulator.scheme
-            
+            self.scheme = self.simulator.scheme    
+        
+        self.progress_window = SimulationOnGoingWindow(self)
+ 
         self.fill_SL_names()
         
         # File menu item
@@ -73,17 +77,16 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         '''Drawing GUI in the main frame'''
         self.subscripts_widget = SubscriptsWidget(self)
         self.simulation_regime_widget = SimulationRegimeWidget(self)
-        self.parameter_setup_widget = ParametersSetupWidget(self)        
-
+        self.parameter_setup_widget = ParametersSetupWidget(self) 
         
         v_layout = QtWidgets.QVBoxLayout()
         v_layout.setAlignment(Qt.AlignTop)
         
-        central_widget = QtWidgets.QWidget()
-        self.setCentralWidget(central_widget)
+        self.central_widget = QtWidgets.QWidget()
+        self.setCentralWidget(self.central_widget)
         
         central_v_layout = QtWidgets.QVBoxLayout()
-        central_widget.setLayout(v_layout)        
+        self.central_widget.setLayout(v_layout)        
         
         central_line1_h_layout = QtWidgets.QHBoxLayout()
         
@@ -103,15 +106,18 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         
         v_layout.addLayout(bottom_buttons_layout)
         v_layout.addStretch(0)
+
+        self.simulator.progress_window = self.progress_window
         
         self.gui_initialized = True
+        print("children: ", [child.__class__ for child in self.children()])
 
     def start_button_clicked_handler(self):
         # name alias for shorter reference to objects
         scheme_var_grid = self.parameter_setup_widget.scheme_vars_grid
         aux_var_grid = self.parameter_setup_widget.aux_vars_grid
         
-        self.simulator.simulate(scheme_var_grid.var_kinds,
+        self.simulator.find_eigenSystem(scheme_var_grid.var_kinds,
                                 scheme_var_grid.var_settings,
                                 aux_var_grid.var_kinds,
                                 aux_var_grid.var_settings,
@@ -165,5 +171,8 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         
     def transfer_internal_to_widget(self):
         pass
+    
+    def fit_window_to_content(self):
+        self.resize(self.minimumSizeHint())
 
 

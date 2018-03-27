@@ -9,13 +9,11 @@ from PyQt5 import QtWidgets
 from sympy import init_printing
 init_printing()
 
-from IPython.display import display
-
 if( __name__ == "__main__" ):
     if not QtWidgets.QApplication.instance():
         app = QtWidgets.QApplication(sys.argv)
     else:
         app = QtWidgets.QApplication.instance()
-        
+
     window = SimWindow()
     sys.exit(app.exec_())

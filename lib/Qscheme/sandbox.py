@@ -1,17 +1,24 @@
-# -*- coding: utf-8 -*-
-from collections import OrderedDict
-import itertools
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import Qt
 
-import numpy as np
+import sys
+
+class myMain(QtWidgets.QMainWindow):
+    def __init__(self):
+        super(myMain,self).__init__()
+        self.child_window = myChild(self)
+        self.show()
+        self.child_window.show()
+        
+class myChild(QtWidgets.QWidget):
+    def __init__(self,parent=None):
+        super(myChild,self).__init__(parent,Qt.Dialog)
 
 if( __name__ == "__main__" ):
-    dict1 = OrderedDict( {"a":1.0,"b":2.0} )
-    dict2 = OrderedDict( {"t":np.linspace(0.4,0.6,3),"t2":np.linspace(10,20,3)} )
-    for key,val in dict1.items():
-        dict1[key] = [val]
-        
-    premesh_sweep = itertools.product(*[itertools.product(key,val) for key,val in dict(**dict1,**dict2).items()])
+    if not QtWidgets.QApplication.instance():
+        app = QtWidgets.QApplication(sys.argv)
+    else:
+        app = QtWidgets.QApplication.instance()
     
-    for point in premesh_sweep:
-        print(point)
-    
+    window = myMain()
+    app.exec_()
