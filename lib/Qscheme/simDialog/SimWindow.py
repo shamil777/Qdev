@@ -30,7 +30,7 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
             self.scheme = self.simulator.scheme    
         
         self.progress_window = SimulationOnGoingWindow(self)
- 
+        
         self.fill_SL_names()
         
         # File menu item
@@ -110,7 +110,7 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         self.simulator.progress_window = self.progress_window
         
         self.gui_initialized = True
-        print("children: ", [child.__class__ for child in self.children()])
+        #print("children: ", [child.__class__ for child in self.children()])
 
     def start_button_clicked_handler(self):
         # name alias for shorter reference to objects

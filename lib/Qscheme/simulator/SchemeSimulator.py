@@ -6,15 +6,11 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pandas as pd
 
-from ..variables import Var
-
 from collections import OrderedDict
 
+from .progressTimer import ProgressTimer
+
 from sympy.parsing.sympy_parser import parse_expr
-
-from IPython.display import display
-
-from datetime import datetime,timedelta
 
 class VAR_KIND:
     FIXED = "FIXED"
@@ -30,15 +26,14 @@ class SIM_BASIS:
     COOPER = "Cooper"
     PHASE = "Phase"
 
+
+
 class SchemeSimulator:
     simulation_subsystems_keywords = ["Internal","External","Whole system"]
     simulation_basis_keywords = ["Node cooper pairs","Node phases"]
     
     def __init__(self, scheme, cooperN=None, progress_window=None):
-        self.simulation_start_time = None
-        self.time_left = None
-        self.simulation_end_time = None
-        self.dt_list = None
+        self.progress_timer = ProgressTimer()
         
         self.scheme = scheme
         self.progress_window = progress_window
@@ -61,9 +56,7 @@ class SchemeSimulator:
                       simulation_subsystem=SIM_SUBSYS.INTERNAL,
                       simulation_basis=SIM_BASIS.COOPER,
                       eigenvals_num = 5,
-                      **simulation_basis_params):
-        # current time
-        self.simulation_start_time = datetime.now()
+                      **simulation_basis_params):       
         
         # checking that parameters specifications
         # are self-sufficient
@@ -105,16 +98,16 @@ class SchemeSimulator:
         
         if( self.progress_window is not None ):
             self.progress_window.show()
-
+            self.progress_window.update_progress()
 
         # local variables for time management
         self.dt_list = []
-        new_now = None
-        old_now = self.simulation_start_time
 
         # Cycling over leaf mesh and obtaining result.
         # Construction of dependent vars is made on the fly        
         leaf_mesh = itertools.product(*[itertools.product([key],val) for key,val in leaf_var_settings.items()])
+        
+        self.progress_timer.start(iterations_n)
         for iter_idx,leaf_point in enumerate(leaf_mesh):
             # getting the rest parameter values by evaluating
             # variables in equation tree
@@ -137,16 +130,15 @@ class SchemeSimulator:
                 result.loc[i] = [evals[i],evects[i]]
             
             # updating time structure
-            new_now = datetime.now()
-            self.dt_list.append(new_now-old_now)
-            old_now = new_now
+            self.progress_timer.tick_dt()
                         
             # updating progress bar if necessary            
             if( self.progress_window is not None ):
-                self.progress_window.update_progress(self,float(iter_idx + 1)/iterations_n)
-                
+                self.progress_window.update_progress(self.progress_timer)
             
-        print(self.dt_list)                
+            
+            
+        print(self.dt_list)         
         print(result)
         
         

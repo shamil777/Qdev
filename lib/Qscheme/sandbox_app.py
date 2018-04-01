@@ -16,4 +16,4 @@ if( __name__ == "__main__" ):
         app = QtWidgets.QApplication.instance()
 
     window = SimWindow()
-    sys.exit(app.exec_())
+    sys.exit(app.exec_()) 

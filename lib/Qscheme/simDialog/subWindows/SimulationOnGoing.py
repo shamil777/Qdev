@@ -7,7 +7,7 @@ class SimulationOnGoingWindow(QtWidgets.QWidget):
         self.setWindowTitle("simulation report")
         self.init_GUI()
         
-    def init_GUI(self):        
+    def init_GUI(self):
         self.vlayout = QtWidgets.QVBoxLayout()
         self.setLayout(self.vlayout)        
         
@@ -19,9 +19,10 @@ class SimulationOnGoingWindow(QtWidgets.QWidget):
         self.time_left_label.setText("time left: ")
         self.vlayout.addWidget(self.time_left_label)
     
-    def update_progress(self,simulator,percent=0):
-        print("update progress: ",percent)
-        self.progress_bar.setValue(percent*100)
-        self.time_left_label.setText("time left: {}".format(simulator.simulation_start_time))
-        self.repaint()
-        print(self.parent())
+    def update_progress(self,progress_timer=None):
+        if( progress_timer is not None ):
+            self.progress_bar.setValue(progress_timer.percentage*100)
+            self.time_left_label.setText("time left: {}".format(progress_timer.approx_process_end))
+        
+        QtWidgets.QApplication.instance().processEvents()
+        
