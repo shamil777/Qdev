@@ -11,7 +11,7 @@ class ProgressTimer():
     def __init__(self):
         self.start_time = datetime.now()
         self.dt_list = []
-        self.dt_avg = None
+        self.dt_avg = self.start_time - self.start_time
         self.approx_process_duration = None
         self.approx_process_end = None
         self.percentage = None
@@ -29,7 +29,7 @@ class ProgressTimer():
         
     def tick_dt(self):
         tmp_now = datetime.now()
-        self.dt_list.append( self.tmp_now - self._last_tick )
+        self.dt_list.append( tmp_now - self._last_tick )
         self._last_tick = tmp_now
         
         self._update_data()

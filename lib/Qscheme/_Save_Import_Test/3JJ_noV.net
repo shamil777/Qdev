@@ -1,0 +1,15 @@
+*PADS-PCB*
+*PART*
+J3     ,JosType2,
+J4     ,JosType1,
+C1     ,C1,
+J2     ,JosType2,
+
+*NET*
+*SIGNAL* Net_0
+J3.1 J2.2 
+*SIGNAL* Net_2
+J4.1 C1.2 J2.1 
+*SIGNAL* Net_1
+J3.2 J4.2 C1.1 
+*END*

@@ -100,9 +100,6 @@ class SchemeSimulator:
             self.progress_window.show()
             self.progress_window.update_progress()
 
-        # local variables for time management
-        self.dt_list = []
-
         # Cycling over leaf mesh and obtaining result.
         # Construction of dependent vars is made on the fly        
         leaf_mesh = itertools.product(*[itertools.product([key],val) for key,val in leaf_var_settings.items()])
@@ -138,7 +135,7 @@ class SchemeSimulator:
             
             
             
-        print(self.dt_list)         
+        print(self.progress_timer.dt_list)         
         print(result)
         
         

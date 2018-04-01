@@ -130,6 +130,43 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         self.SL_children_names = ["subscripts_widget",  
                                  "simulation_regime_widget", 
                                  "parameter_setup_widget"]
+    
+    def _preSave_unpicklable_refs_nullifier(self):
+        '''
+        @description: ## FOR INTERNAL USAGE ##
+                Pre-save unserializable references nullifier.
+                Pickle.dump will return error if some of the object are containing
+            unserializable objects, like "simulator.progress_window" is widget and
+            hence not serializable.
+                Used in pair with "_afterLoad_unpickable_refs_restorator"
+            that restores all nullified references if possible.
+        @args: None
+        @return: None
+        '''
+        self.simulator.progress_window = None
+    
+    def file_save(self):
+        name = QtWidgets.QFileDialog.getSaveFileName(self,"Open File Name","","*.qsch")[0]          
+        
+        dump_dict = self.return_save_dict()
+        self._preSave_unpicklable_refs_nullifier()
+        with open(name,"wb") as file:
+            pickle.dump(dump_dict,file)
+    
+    def _afterLoad_unpickable_refs_restorator(self):
+        '''
+        @description: ## FOR INTERNAL USAGE ##
+                After-load unserializable references restoration.
+                Pickle.dump will return error if some of the object are containing
+            unserializable objects, like "simulator.progress_window" is widget and
+            hence not serializable. This function restores the unpicklable links
+            after load process is over.
+                Used in pair with "_preSave_unpicklable_refs_nullifier"
+            that nullifies corresponding references (set them to None).
+        @args: None
+        @return: None
+        '''
+        self.simulator.progress_window = self.progress_window
         
     def file_load(self):
         name = QtWidgets.QFileDialog.getOpenFileName(self,"Open File Name","Qscheme files","*.qsch")[0]
@@ -141,16 +178,11 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
             self.scheme = self.simulator.scheme
         
             self.init_GUI()
-        
+            
         self.load_from_dict_tree(load_dict)
         self.transfer_internal_to_widget_tree()
+        self._afterLoad_unpickable_refs_restorator() 
             
-    def file_save(self):
-        name = QtWidgets.QFileDialog.getSaveFileName(self,"Open File Name","","*.qsch")[0]          
-        
-        dump_dict = self.return_save_dict()
-        with open(name,"wb") as file:
-            pickle.dump(dump_dict,file)
     
     def import_netlist_handler(self):
         file_name = QtWidgets.QFileDialog.getOpenFileName(self,"Open File Name","netlist files","*.net")[0]
@@ -161,7 +193,7 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         else:
             self.parameter_setup_widget.scheme_subscripts_changed_handler()
     
-    def printChildren(self,obj):
+    def _printChildren(self,obj):
         #print( "children of ", obj )
         for child in obj.children():
             print( child )
