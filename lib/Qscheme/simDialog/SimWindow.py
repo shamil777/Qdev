@@ -14,7 +14,12 @@ import pickle
 
 from .SLBase import SLBase
 
+import appdirs
+
 class SimWindow(QtWidgets.QMainWindow,SLBase):
+    programData_dir = appdirs.
+    
+    
     def __init__(self,simulator=None):        
         super(SimWindow,self).__init__()
         

@@ -33,7 +33,8 @@ class SchemeSimulator:
     simulation_basis_keywords = ["Node cooper pairs","Node phases"]
     
     def __init__(self, scheme, cooperN=None, progress_window=None):
-        self.progress_timer = ProgressTimer()
+        self.progress_timer = None
+        self.calculation_cancelled = False
         
         self.scheme = scheme
         self.progress_window = progress_window
@@ -48,6 +49,9 @@ class SchemeSimulator:
         self.leafs = None
         
         
+    
+    def cancel_calculation(self):
+        self.calculation_cancelled = True
     
     def find_eigenSystem(self,scheme_var_kinds,
                       scheme_var_settings,
@@ -103,7 +107,10 @@ class SchemeSimulator:
         # Cycling over leaf mesh and obtaining result.
         # Construction of dependent vars is made on the fly        
         leaf_mesh = itertools.product(*[itertools.product([key],val) for key,val in leaf_var_settings.items()])
+
+        self.calculation_cancelled = False        
         
+        self.progress_timer = ProgressTimer()
         self.progress_timer.start(iterations_n)
         for iter_idx,leaf_point in enumerate(leaf_mesh):
             # getting the rest parameter values by evaluating
@@ -132,6 +139,10 @@ class SchemeSimulator:
             # updating progress bar if necessary            
             if( self.progress_window is not None ):
                 self.progress_window.update_progress(self.progress_timer)
+            
+            # whether the calculation is cancelled
+            if( self.calculation_cancelled is True ):
+                break
             
             
             
