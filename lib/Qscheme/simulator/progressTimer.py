@@ -41,9 +41,11 @@ class ProgressTimer():
         self.dt_avg = self.dt_avg*(float(n)-1)/n + self.dt_list[-1]/n
         
         # update approx process durability
-        self.approx_process_duration = (self.n_iterations - n)*self.dt_avg
-
+        self.approx_process_duration = self.n_iterations*self.dt_avg
         
+        # update approx time to end
+        self.approx_time_to_end = self.approx_process_duration - n*self.dt_avg
+
         # update approx process end time
         self.approx_process_end = self.start_time + self.approx_process_duration
         

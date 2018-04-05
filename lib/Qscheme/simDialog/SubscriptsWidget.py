@@ -16,8 +16,6 @@ class SubscriptsWidget(QtWidgets.QWidget,SLBase):
         
         self.fill_SL_names()
         
-        self.init_GUI()
-        
     def init_GUI(self):
         v_layout = QtWidgets.QVBoxLayout()
         self.setLayout(v_layout)
@@ -25,7 +23,7 @@ class SubscriptsWidget(QtWidgets.QWidget,SLBase):
         grid = QtWidgets.QGridLayout()
         grid.setSpacing(10)
         
-        elements = self.parent().simulator.scheme.elements
+        elements = self.ref_to_parent.simulator.scheme.elements
         
         for element in elements.values():
             self.group_name_subscripts[element.group_name] = ""

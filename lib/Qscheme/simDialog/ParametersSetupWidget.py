@@ -259,13 +259,7 @@ class ParametersSetupWidget(QtWidgets.QWidget,SLBase):
         super(ParametersSetupWidget,self).__init__(parent,flags)
         self.ref_to_parent = self.parent()
         
-        # scheme.params is already loaded at this stage, so it is save to use this list
-        scheme_vars_list = list(self.ref_to_parent.simulator.scheme.params.values())
-        self.scheme_vars_grid = VarsGridWidget(scheme_vars_list,self)
-        self.aux_vars_grid = VarsGridWidget(parent=self)   
-        
         self.fill_SL_names()        
-        self.init_GUI()
     
     def fill_SL_names(self):
         self.SL_attributes_names = []
@@ -273,6 +267,11 @@ class ParametersSetupWidget(QtWidgets.QWidget,SLBase):
                                   "aux_vars_grid"] 
         
     def init_GUI(self):
+        # scheme.params is already loaded at this stage, so it is save to use this list
+        scheme_vars_list = list(self.ref_to_parent.simulator.scheme.params.values())
+        self.scheme_vars_grid = VarsGridWidget(scheme_vars_list,self)
+        self.aux_vars_grid = VarsGridWidget(parent=self)
+        
         v_layout = QtWidgets.QVBoxLayout()
         self.setLayout(v_layout)
         

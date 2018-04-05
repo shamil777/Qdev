@@ -41,7 +41,7 @@ class SchemeSimulator:
         self.cooperN = cooperN
         self.completed = 0
         
-        simulation_datasets = pd.DataFrame(columns=["scheme_var_kinds","scheme_vars_settings",
+        self.simulation_datasets = pd.DataFrame(columns=["scheme_var_kinds","scheme_vars_settings",
                                                     "aux_var_kinds","aux_var_settings",
                                                     "simulation subsystem",
                                                     "simulation basis","simulation_basis_params","result"])
@@ -123,7 +123,7 @@ class SchemeSimulator:
             
             # matrix diagonalization
             if( simulation_subsystem == SIM_SUBSYS.INTERNAL ):
-                evals,evects = self.find_eigensystem_internal(eigenvals_num )
+                evals,evects = self.find_eigensystem_internal( eigenvals_num )
             elif( simulation_subsystem == SIM_SUBSYS.COUPLING ):
                 raise NotImplementedError
             elif( simulation_subsystem == SIM_SUBSYS.WHOLE ):
@@ -145,13 +145,24 @@ class SchemeSimulator:
                 break
             
             
-            
-        print(self.progress_timer.dt_list)         
-        print(result)
-        
+        res_dict = {"scheme_var_kinds":scheme_var_kinds,
+                    "scheme_vars_settings":scheme_var_settings,
+                    "aux_var_kinds":aux_var_kinds,
+                    "aux_var_settings":aux_var_settings,
+                    "simulation subsystem":simulation_subsystem,
+                    "simulation basis":simulation_basis,
+                    "simulation_basis_params":simulation_basis_params,
+                    "result":result}
+        self.simulation_datasets = self.simulation_datasets.append(res_dict,ignore_index=True)  
         
         ## CALCULATION SECTION END ##
-                
+    
+    def plot_last_result(self):
+        last_res = self.simulation_datasets[["result"]]
+        print(last_res.index)
+        print(last_res.columns)
+        print(last_res.values)
+    
     def get_point_from_leaf_point(self,leaf_mesh_point,var_settings):
         vars_point = OrderedDict([(var.sym,var.val) for var in self.scheme.params.values()] )
         

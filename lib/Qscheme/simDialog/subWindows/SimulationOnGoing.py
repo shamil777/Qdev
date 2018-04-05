@@ -54,7 +54,7 @@ class SimulationOnGoingWindow(QtWidgets.QWidget):
         if( progress_timer is not None ):
             self.progress_bar.setValue(progress_timer.percentage*100)
             self.start_time_label.setText("start time: {}".format(progress_timer.start_time.strftime(self.datetime_format_str)))
-            self.time_left_label.setText("approx time left: " + self._deltatime_format_text(progress_timer.approx_process_duration))
+            self.time_left_label.setText("approx time left: " + self._deltatime_format_text(progress_timer.approx_time_to_end))
             self.end_time_label.setText("approx end time: {}".format(progress_timer.approx_process_end.strftime(self.datetime_format_str)))
         
         QtWidgets.QApplication.instance().processEvents()

@@ -15,7 +15,6 @@ class SimulationRegimeWidget(QtWidgets.QWidget,SLBase):
         self.subsystem_choice = None
         # Save/Load variables section END #
         
-        self.init_GUI()
         self.fill_SL_names()
         
     def init_GUI(self):
