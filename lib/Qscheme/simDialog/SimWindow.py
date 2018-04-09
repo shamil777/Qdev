@@ -219,8 +219,9 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
             
         self.settings[SettingsField.LAST_QDEV_FILE_OPENED] = name
         self._save_settings()
+        self._unpickable_refs_restorator() # to continue working with all links restored
     
-    def _afterLoad_unpickable_refs_restorator(self):
+    def _unpickable_refs_restorator(self):
         '''
         @description: ## FOR INTERNAL USAGE ##
                 After-load unserializable references restoration.
@@ -251,7 +252,7 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
             
         self.load_from_dict_tree(load_dict)
         self.transfer_internal_to_widget_tree()
-        self._afterLoad_unpickable_refs_restorator() 
+        self._unpickable_refs_restorator() 
         
         self.settings[SettingsField.LAST_QDEV_FILE_OPENED] = name
         self._save_settings()

@@ -12,6 +12,9 @@ from .progressTimer import ProgressTimer
 
 from sympy.parsing.sympy_parser import parse_expr
 
+import matplotlib.pyplot as plt
+from ..variables import Var
+
 class VAR_KIND:
     FIXED = "FIXED"
     SWEEP = "SWEEP"
@@ -25,6 +28,16 @@ class SIM_SUBSYS:
 class SIM_BASIS:
     COOPER = "Cooper"
     PHASE = "Phase"
+    
+class KW:
+    EVALS = "EVALS"
+    EVECTS = "EVECTS"
+    POINT = "POINT"
+    
+class IDX:
+    POINT = 0
+    EVALS = 1
+    EVECTS = 2
 
 
 
@@ -73,9 +86,6 @@ class SchemeSimulator:
         # setting up some local variables
         self.cooperN = simulation_basis_params["cooper_N"]
         
-        # result is stored as DataFrame object
-        result = pd.DataFrame(columns=["E, GHz","eigen_vec"])
-        
         # setting up union of the scheme and auxillary param dicts 
         # for data access convinience
         var_kinds = OrderedDict(**scheme_var_kinds,**aux_var_kinds)
@@ -112,6 +122,9 @@ class SchemeSimulator:
         
         self.progress_timer = ProgressTimer()
         self.progress_timer.start(iterations_n)
+        
+        result = []
+        
         for iter_idx,leaf_point in enumerate(leaf_mesh):
             # getting the rest parameter values by evaluating
             # variables in equation tree
@@ -123,15 +136,14 @@ class SchemeSimulator:
             
             # matrix diagonalization
             if( simulation_subsystem == SIM_SUBSYS.INTERNAL ):
-                evals,evects = self.find_eigensystem_internal( eigenvals_num )
+                evals, evects = self.find_eigensystem_internal( eigenvals_num )
             elif( simulation_subsystem == SIM_SUBSYS.COUPLING ):
                 raise NotImplementedError
             elif( simulation_subsystem == SIM_SUBSYS.WHOLE ):
                 raise NotImplementedError
-            
-            # storing result
-            for i in range(eigenvals_num):
-                result.loc[i] = [evals[i],evects[i]]
+
+            # storing spectra of the current mesh point
+            result.append( [vars_point,evals,evects] ) # storing point result to list
             
             # updating time structure
             self.progress_timer.tick_dt()
@@ -144,7 +156,7 @@ class SchemeSimulator:
             if( self.calculation_cancelled is True ):
                 break
             
-            
+        result = np.array(result)
         res_dict = {"scheme_var_kinds":scheme_var_kinds,
                     "scheme_vars_settings":scheme_var_settings,
                     "aux_var_kinds":aux_var_kinds,
@@ -158,10 +170,28 @@ class SchemeSimulator:
         ## CALCULATION SECTION END ##
     
     def plot_last_result(self):
-        last_res = self.simulation_datasets[["result"]]
-        print(last_res.index)
-        print(last_res.columns)
-        print(last_res.values)
+        last_res = self.simulation_datasets["result"].iloc[-1:].values[0]
+        sweep_var = Var("t")
+        x = [pt[sweep_var.sym] for pt in last_res[:,IDX.POINT]]
+        y_list = last_res[:,IDX.EVALS]
+        print(y_list.shape)
+        print(y_list,'\n')
+        print(y_list.T)
+        
+        spectr_idxs = [[0,1],[1,2],[2,3]]
+         
+        for idx,y in zip(spectr_idxs,y_list):
+            plt.plot(x,y, label="$E_" + str(idx[1]) + " - E_"+ str(idx[0]) + "$")
+            
+        # plot cosmetics
+        plt.ylabel(r"E, GHz")
+        plt.xlabel(r"$" + str(sweep_var.sym) + "$")
+        plt.legend()
+        plt.grid()
+        
+        plt.show()
+            
+            
     
     def get_point_from_leaf_point(self,leaf_mesh_point,var_settings):
         vars_point = OrderedDict([(var.sym,var.val) for var in self.scheme.params.values()] )
@@ -275,8 +305,8 @@ class SchemeSimulator:
         self.scheme._construct_Hj_num_cooperN(self.cooperN)
         H =  self.scheme.Hc_num_cooperN + self.scheme.Hj_num_cooperN
         evals, einvects = H.eigenstates(sparse=True,eigvals=eigvals_N)
-            
-        return np.array(evals), einvects
+        einvects = np.array([vec.data for vec in einvects])
+        return evals, einvects
     
     
     def find_eigensystem_on_mesh(self,params_list,mesh,eigvals_N):
