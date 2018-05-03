@@ -2,10 +2,13 @@ from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 
 class SimulationOnGoingWindow(QtWidgets.QWidget):
-    def __init__(self,parent=None):
+    def __init__(self,parent=None,plot_func_ref=None):
         super(SimulationOnGoingWindow,self).__init__(parent, Qt.Window)
         self.ref_to_parent= self.parent()
         self.setWindowTitle("simulation report")
+        
+        self.plot_func_ref = plot_func_ref
+        
         self.init_GUI()
         
     def init_GUI(self):
@@ -28,10 +31,21 @@ class SimulationOnGoingWindow(QtWidgets.QWidget):
         self.end_time_label.setText("approx end time: ")
         self.vlayout.addWidget(self.end_time_label)
         
+        self.hbtnLayout = QtWidgets.QHBoxLayout()
+        
         self.cancel_btn = QtWidgets.QPushButton(self)
         self.cancel_btn.setText("Cancel")
         self.cancel_btn.clicked.connect(self.cancel_btn_clicked_handler)
-        self.vlayout.addWidget(self.cancel_btn)
+        self.hbtnLayout.addWidget(self.cancel_btn)
+        
+        self.plot_eigvals_btn = QtWidgets.QPushButton(self)
+        self.plot_eigvals_btn.setText("Plot")
+        self.plot_eigvals_btn.setEnabled(False)
+        self.plot_eigvals_btn.clicked.connect(self.plot_func_ref)
+        self.hbtnLayout.addWidget(self.plot_eigvals_btn)
+
+        self.vlayout.addLayout(self.hbtnLayout)
+        
         
         self.vlayout.setAlignment(Qt.AlignTop)
         
@@ -58,4 +72,7 @@ class SimulationOnGoingWindow(QtWidgets.QWidget):
             self.end_time_label.setText("approx end time: {}".format(progress_timer.approx_process_end.strftime(self.datetime_format_str)))
         
         QtWidgets.QApplication.instance().processEvents()
+        
+    def plot_btn_activate(self):
+        self.plot_eigvals_btn.setEnabled(True)
         

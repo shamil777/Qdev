@@ -11,9 +11,9 @@ from collections import OrderedDict
 from .progressTimer import ProgressTimer
 
 from sympy.parsing.sympy_parser import parse_expr
-
-import matplotlib.pyplot as plt
 from ..variables import Var
+
+from ..simDialog.subWindows.SimulationOnGoing import SimulationOnGoingWindow
 
 class VAR_KIND:
     FIXED = "FIXED"
@@ -45,12 +45,15 @@ class SchemeSimulator:
     simulation_subsystems_keywords = ["Internal","External","Whole system"]
     simulation_basis_keywords = ["Node cooper pairs","Node phases"]
     
-    def __init__(self, scheme, cooperN=None, progress_window=None):
+    def __init__(self, scheme, cooperN=None, visualize=False):
+        self.visualize = visualize
+        self.progress_window = None
+        self.reinit_visualization_window()
+        
         self.progress_timer = None
         self.calculation_cancelled = False
         
         self.scheme = scheme
-        self.progress_window = progress_window
         self.cooperN = cooperN
         self.completed = 0
         
@@ -61,7 +64,14 @@ class SchemeSimulator:
         self.parameters_consistent_graph = None
         self.leafs = None
         
+    def reinit_visualization_window(self):
+        if( not self.visualize ):
+            return
         
+        if( self.progress_window is not None ):
+            self.progress_window.setParent(None)
+            
+        self.progress_window = SimulationOnGoingWindow(plot_func_ref=self.plot_last_result)
     
     def cancel_calculation(self):
         self.calculation_cancelled = True
@@ -110,7 +120,8 @@ class SchemeSimulator:
             elif( var_kinds[leaf_node_sym] == VAR_KIND.FIXED ):
                 leaf_var_settings[leaf_node_sym] = [var_settings[leaf_node_sym]]
         
-        if( self.progress_window is not None ):
+        # in case where a visualization is present
+        if( self.visualize is not None ):
             self.progress_window.show()
             self.progress_window.update_progress()
 
@@ -118,8 +129,10 @@ class SchemeSimulator:
         # Construction of dependent vars is made on the fly        
         leaf_mesh = itertools.product(*[itertools.product([key],val) for key,val in leaf_var_settings.items()])
 
+        # making sure that calculation is not cancelled yet
         self.calculation_cancelled = False        
         
+        # setting up timer for efficiency
         self.progress_timer = ProgressTimer()
         self.progress_timer.start(iterations_n)
         
@@ -141,7 +154,7 @@ class SchemeSimulator:
                 raise NotImplementedError
             elif( simulation_subsystem == SIM_SUBSYS.WHOLE ):
                 raise NotImplementedError
-
+                
             # storing spectra of the current mesh point
             result.append( [vars_point,evals,evects] ) # storing point result to list
             
@@ -156,6 +169,7 @@ class SchemeSimulator:
             if( self.calculation_cancelled is True ):
                 break
             
+        self.progress_window.plot_btn_activate()
         result = np.array(result)
         res_dict = {"scheme_var_kinds":scheme_var_kinds,
                     "scheme_vars_settings":scheme_var_settings,
@@ -169,19 +183,25 @@ class SchemeSimulator:
         
         ## CALCULATION SECTION END ##
     
+    def _print_array_info( self, name, array, data=False ):
+        print(name + ": ",type(array),"| data type: ",array.dtype)
+        print("shape: ", array.shape)
+        if( data ):
+            print(array,'\n')
+            print(array.T)
+    
     def plot_last_result(self):
         last_res = self.simulation_datasets["result"].iloc[-1:].values[0]
         sweep_var = Var("t")
-        x = [pt[sweep_var.sym] for pt in last_res[:,IDX.POINT]]
+        x = np.array([pt[sweep_var.sym] for pt in last_res[:,IDX.POINT]])        
         y_list = last_res[:,IDX.EVALS]
-        print(y_list.shape)
-        print(y_list,'\n')
-        print(y_list.T)
+        
+        y_list = np.vstack(y_list).T
         
         spectr_idxs = [[0,1],[1,2],[2,3]]
-         
-        for idx,y in zip(spectr_idxs,y_list):
-            plt.plot(x,y, label="$E_" + str(idx[1]) + " - E_"+ str(idx[0]) + "$")
+        
+        for i,idx in enumerate(spectr_idxs):
+            plt.plot(x,y_list[idx[1]] - y_list[idx[0]], label="$E_" + str(idx[1]) + " - E_"+ str(idx[0]) + "$")
             
         # plot cosmetics
         plt.ylabel(r"E, GHz")
@@ -392,101 +412,6 @@ class SchemeSimulator:
         
 ### USEFULL OLD CODE THAT CAN BE USED IN THE FUTURE ###
 
-def array_eins_from_params_product(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,eigvals_N_pts):
-    arr_evals = []
-    arr_einvects = []
-    
-    fparams = [fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,eigvals_N_pts]
-    for i,param in enumerate(fparams):
-        if( not isinstance(param,list) and not isinstance(param,np.ndarray)):
-            fparams[i] = [param]
-            
-    # sorted order is preserved
-    prod = itertools.product(*fparams)
-    
-    for params in prod:
-        f = params[0]*2*np.pi
-        E_C = params[1]
-        E_J = params[2]
-        Csh = params[3]
-        alpha = params[4]
-        cooper_N = params[5]
-        eigvals_N = params[6]
-        
-        H = H_J(E_J,alpha,f,cooper_N) + H_c(E_C,Csh,alpha,cooper_N)
-        evals, einvects = H.eigenstates(sparse=True,eigvals=eigvals_N)
-        arr_evals.append(evals)
-        arr_einvects.append(einvects)
-        
-    return arr_einvects, np.array(arr_evals)
-
-def array_eins_from_params_lists(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,eigvals_N_pts):
-    arr_evals = []
-    arr_einvects = []
-    # sorted order is preserved
-    
-    params = [fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,eigvals_N_pts]
-    lengths = []
-    for i, param in enumerate(params):
-        if( isinstance(param,list) ):
-            lengths.append(len(param))
-        elif( isinstance(param,np.ndarray) ):
-            lengths.append(param.shape[0])
-        else:
-            lengths.append(1)
-            
-    max_len = max(lengths)
-    
-    for i,param in enumerate(params):
-        if( not isinstance(param,(list, np.ndarray)) ):
-            params[i] = itertools.repeat(param,max_len)
-        
-    iter_list = zip( *params )
-    
-    for i,vals in enumerate(iter_list):
-        f = vals[0]*2*np.pi
-        E_C = vals[1]
-        E_J = vals[2]
-        Csh = vals[3]
-        alpha = vals[4]
-        cooper_N = vals[5]
-        eigvals_N = vals[6]
-        
-        print('\r{:g} {:g} {:g} {:g} {:g} {:g} {:g}'.format(f,E_C,E_J,Csh,alpha,cooper_N,eigvals_N), end='')
-        H = H_J(E_J,alpha,f,cooper_N) + H_c(E_C,Csh,alpha,cooper_N)
-        evals, einvects = H.eigenstates(sparse=True,eigvals=eigvals_N)
-        arr_evals.append(evals)
-        arr_einvects.append(einvects)
-        
-    return arr_einvects, np.array(arr_evals)
-
-def array_coupling_from_parameters_product(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,multiplier):
-    multiplier = 2*e*V_r0*beta/h # GHz
-    
-    g = []
-    
-    fparams = [fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,2]
-    for i,param in enumerate(fparams):
-        if( not isinstance(param,list) and not isinstance(param,np.ndarray)):
-            fparams[i] = [param]
-            
-    # sorted order is preserved
-    prod = itertools.product(*fparams)
-    
-    Evs, Engs = array_eins_from_params_product(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,2)
-    Evs = np.array(Evs)
-    
-    for i,params in enumerate(prod):
-        N = params[5]
-        n1_op = qp.tensor(qp.charge(N),qp.identity(2*N+1))
-        n2_op = qp.tensor(qp.identity(2*N+1),qp.charge(N))
-        
-        vec0 = Evs[i,0]
-        vec1 = Evs[i,1]
-        g.append( multiplier*(n1_op-n2_op).matrix_element(vec0.dag(),vec1) )
-                 
-    return np.array(g)
-
 def array_coupling_from_parameters_lists(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,multiplier):
     multiplier = 2*e*V_r0*beta/h # GHz
     
@@ -523,6 +448,3 @@ def array_coupling_from_parameters_lists(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pt
         g.append( multiplier*(n1_op-n2_op).matrix_element(vec0.dag(),vec1) )
                  
     return np.array(g)
-
-def array_eins_full_from_parameters_product(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts):
-    pass

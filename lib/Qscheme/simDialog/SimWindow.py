@@ -1,4 +1,8 @@
-from PyQt5 import QtCore,QtWidgets
+from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog
+from PyQt5.QtWidgets import QVBoxLayout,QHBoxLayout
+from PyQt5.QtWidgets import QPushButton
+from PyQt5.QtWidgets import QAction
+
 from PyQt5.QtCore import Qt
 
 from .SubscriptsWidget import SubscriptsWidget
@@ -23,7 +27,7 @@ class SettingsField():
     LAST_QDEV_FILE_OPENED = "LAST_QDEV_FILE_OPENED"
    
 
-class SimWindow(QtWidgets.QMainWindow,SLBase):
+class SimWindow(QMainWindow,SLBase):
     appData_dir = appdirs.user_data_dir()
     Qdev_folderName  = "Qdev"
     Qdev_settings_fileName = "Qdev_data.txt"
@@ -51,30 +55,30 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         ## MAIN WINDOW WIDGETS SECTION END
 
         ## ADDITIONAL WINDOWS SECTION START ##
-        self.progress_window = SimulationOnGoingWindow(self)
+        
         ## ADDITIONAL WINDOWS SECTION END ##  
         
         self.fill_SL_names()
         
         # File menu item
-        extractAction = QtWidgets.QAction("&Quit",self)
+        extractAction = QAction("&Quit",self)
         extractAction.setShortcut("Ctrl+Q")
         extractAction.setStatusTip("Leave application")
         extractAction.triggered.connect(self.close)
         
         # Savel/Load main menu items        
-        loadVars_file = QtWidgets.QAction("&open file",self)
+        loadVars_file = QAction("&open file",self)
         loadVars_file.setShortcut("Ctrl+O")
         loadVars_file.setStatusTip("file open dialog pops up")
         loadVars_file.triggered.connect(self.file_load_dialog)
         
-        saveVars_file = QtWidgets.QAction("&save file",self)
+        saveVars_file = QAction("&save file",self)
         saveVars_file.setShortcut("Ctrl+S")
         saveVars_file.setStatusTip("file save dialog pops up")
         saveVars_file.triggered.connect(self.file_save_dialog)
         
         # Import main menu item
-        importPADs = QtWidgets.QAction("import &netlist",self)
+        importPADs = QAction("import &netlist",self)
         importPADs.setStatusTip("import from .net netlist file format")
         importPADs.triggered.connect(self.import_netlist_handler)
         
@@ -135,16 +139,16 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         self.simulation_regime_widget.init_GUI()
         self.subscripts_widget.init_GUI()
         
-        v_layout = QtWidgets.QVBoxLayout()
+        v_layout = QVBoxLayout()
         v_layout.setAlignment(Qt.AlignTop)
         
-        self.central_widget = QtWidgets.QWidget()
+        self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         
-        central_v_layout = QtWidgets.QVBoxLayout()
+        central_v_layout = QVBoxLayout()
         self.central_widget.setLayout(v_layout)        
         
-        central_line1_h_layout = QtWidgets.QHBoxLayout()
+        central_line1_h_layout = QHBoxLayout()
         
         central_line1_h_layout.addWidget(self.subscripts_widget)
         central_line1_h_layout.addWidget(self.simulation_regime_widget)
@@ -154,11 +158,11 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         
         v_layout.addLayout(central_v_layout)
         
-        bottom_buttons_layout = QtWidgets.QVBoxLayout()
+        bottom_buttons_layout = QVBoxLayout()
         
-        start_button = QtWidgets.QPushButton("Start simulation",self)
+        start_button = QPushButton("Start simulation",self)
         start_button.clicked.connect(self.start_button_clicked_handler)
-        visualize_button = QtWidgets.QPushButton("Visualize",self)
+        visualize_button = QPushButton("Visualize",self)
         visualize_button.clicked.connect(self.visualize_button_clicked_handler)
         
         bottom_buttons_layout.addWidget(start_button)
@@ -166,7 +170,7 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         
         v_layout.addLayout(bottom_buttons_layout)
 
-        self.simulator.progress_window = self.progress_window
+        self.progress_window = self.simulator.progress_window 
         
         self.gui_initialized = True
         #print("children: ", [child.__class__ for child in self.children()])
@@ -208,7 +212,7 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         self.simulator.progress_window = None
     
     def file_save_dialog(self):
-        name = QtWidgets.QFileDialog.getSaveFileName(self,"Open File Name","","*.qsch")[0]          
+        name = QFileDialog.getSaveFileName(self,"Open File Name","","*.qsch")[0]          
         self.file_save(name)
         
     def file_save(self,name):
@@ -234,10 +238,11 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
         @args: None
         @return: None
         '''
-        self.simulator.progress_window = self.progress_window
+        # creating new window for the simulator class
+        self.simulator.reinit_visualization_window()
         
     def file_load_dialog(self):
-        name = QtWidgets.QFileDialog.getOpenFileName(self,"Open File Name","Qscheme files","*.qsch")[0]
+        name = QFileDialog.getOpenFileName(self,"Open File Name","Qscheme files","*.qsch")[0]
         self.file_load(name)
         
     def file_load(self,name):
@@ -259,9 +264,9 @@ class SimWindow(QtWidgets.QMainWindow,SLBase):
             
     
     def import_netlist_handler(self):
-        file_name = QtWidgets.QFileDialog.getOpenFileName(self,"Open File Name","netlist files","*.net")[0]
+        file_name = QFileDialog.getOpenFileName(self,"Open File Name","netlist files","*.net")[0]
         self.scheme = Scheme(file_path=file_name)
-        self.simulator = SchemeSimulator(self.scheme)
+        self.simulator = SchemeSimulator(self.scheme,visualize=True)
         if( not self.gui_initialized ):
             self.init_GUI()
         else:
