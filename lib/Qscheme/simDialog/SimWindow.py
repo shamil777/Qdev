@@ -218,8 +218,11 @@ class SimWindow(QMainWindow,SLBase):
     def file_save(self,name):
         dump_dict = self.return_save_dict()
         self._preSave_unpicklable_refs_nullifier()
-        with open(name,"wb") as file:
-            pickle.dump(dump_dict,file)
+        try:
+            with open(name,"wb") as file:
+                pickle.dump(dump_dict,file)
+        except FileNotFoundError:
+            return
             
         self.settings[SettingsField.LAST_QDEV_FILE_OPENED] = name
         self._save_settings()
