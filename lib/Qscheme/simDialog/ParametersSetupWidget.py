@@ -3,9 +3,9 @@ from PyQt5.QtCore import Qt
 
 from collections import OrderedDict
 
-from .SLBase import SLBase
+from .SLBase import SLBaseWidget
 from ..variables import Var
-from ..simulator.SchemeSimulator import VAR_KIND
+from .._KEYHASHABLE import VAR_KIND
 
 class SymNum_LineEdit(QtWidgets.QLineEdit):
     def __init__(self,var_sym=None,col_idx=0,parent=None):
@@ -19,7 +19,7 @@ class Sym_ComboBox(QtWidgets.QComboBox):
         self.var_sym = var_sym
         self.row_i = row_i
 
-class VarsGridWidget(QtWidgets.QWidget,SLBase):
+class VarsGridWidget(QtWidgets.QWidget,SLBaseWidget):
     var_kinds_strs = ["fixed","sweep","equation"]
     sweep_var_fill_strs = ["start","stop","N points"]
     
@@ -254,7 +254,7 @@ class VarsGridWidget(QtWidgets.QWidget,SLBase):
     ## SLOTS SECTION END ##
     
 
-class ParametersSetupWidget(QtWidgets.QWidget,SLBase):
+class ParametersSetupWidget(QtWidgets.QWidget,SLBaseWidget):
     def __init__(self, parent=None, flags=Qt.WindowFlags()):
         super(ParametersSetupWidget,self).__init__(parent,flags)
         self.ref_to_parent = self.parent()
@@ -267,13 +267,12 @@ class ParametersSetupWidget(QtWidgets.QWidget,SLBase):
                                   "aux_vars_grid"] 
         
     def init_GUI(self):
-        # scheme.params is already loaded at this stage, so it is save to use this list
-        scheme_vars_list = list(self.ref_to_parent.simulator.scheme.params.values())
-        self.scheme_vars_grid = VarsGridWidget(scheme_vars_list,self)
-        self.aux_vars_grid = VarsGridWidget(parent=self)
-        
         v_layout = QtWidgets.QVBoxLayout()
         self.setLayout(v_layout)
+        
+        vars_list = self.ref_to_parent.simulator.scheme.params
+        self.scheme_vars_grid = VarsGridWidget(vars_list)
+        self.aux_vars_grid = VarsGridWidget()
         
         ## adding 2 grid for scheme and auxillary variables
         v_layout.addWidget(self.scheme_vars_grid)

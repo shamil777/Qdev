@@ -1,77 +1,92 @@
-import itertools
+import os
+import sys
+import csv
+import pickle
+import appdirs
 
 import numpy as np
 import matplotlib.pyplot as plt
-
 import networkx as nx
 import pandas as pd
 
+from itertools import product
 from collections import OrderedDict
+from sympy.parsing.sympy_parser import parse_expr
+
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QFileDialog
 
 from .progressTimer import ProgressTimer
-
-from sympy.parsing.sympy_parser import parse_expr
+from ..simDialog.SLBase import SLBase
 from ..variables import Var
-
+from ..schematic.Scheme import Scheme
+from ..simDialog import SimWindow
 from ..simDialog.subWindows.SimulationOnGoing import SimulationOnGoingWindow
-
-class VAR_KIND:
-    FIXED = "FIXED"
-    SWEEP = "SWEEP"
-    EQUATION = "EQUATION"
-    
-class SIM_SUBSYS:
-    INTERNAL = "Internal"
-    COUPLING = "Coupling"
-    WHOLE = "Whole"
-    
-class SIM_BASIS:
-    COOPER = "Cooper"
-    PHASE = "Phase"
-    
-class KW:
-    EVALS = "EVALS"
-    EVECTS = "EVECTS"
-    POINT = "POINT"
-    
-class IDX:
-    POINT = 0
-    EVALS = 1
-    EVECTS = 2
+from .._KEYHASHABLE import SETTINGS_FIELD,SIM_SUBSYS,SIM_BASIS,VAR_KIND,IDX
 
 
-
-class SchemeSimulator:
+class SchemeSimulator(SLBase):
+    appData_dir = appdirs.user_data_dir()
+    Qdev_folderName  = "Qdev"
+    Qdev_settings_fileName = "Qdev_data.txt"
+    Qdev_folder_path = os.path.join( appData_dir, Qdev_folderName )
+    Qdev_settings_path = os.path.join( Qdev_folder_path, Qdev_settings_fileName )
+    
     simulation_subsystems_keywords = ["Internal","External","Whole system"]
     simulation_basis_keywords = ["Node cooper pairs","Node phases"]
     
-    def __init__(self, scheme, cooperN=None, visualize=False):
+    def __init__(self, visualize=True, scheme=None ):
+        self.fill_SL_names()
+        
         self.visualize = visualize
-        self.progress_window = None
-        self.reinit_visualization_window()
         
         self.progress_timer = None
         self.calculation_cancelled = False
         
         self.scheme = scheme
-        self.cooperN = cooperN
+        self.cooperN = 1
         self.completed = 0
         
         self.simulation_datasets = pd.DataFrame(columns=["scheme_var_kinds","scheme_vars_settings",
                                                     "aux_var_kinds","aux_var_settings",
                                                     "simulation subsystem",
                                                     "simulation basis","simulation_basis_params","result"])
-        self.parameters_consistent_graph = None
-        self.leafs = None
+
+        self.result_last = None
+        self.parameters_consistent_graph_current = None
+        self.leafs_current = None
         
-    def reinit_visualization_window(self):
-        if( not self.visualize ):
-            return
-        
-        if( self.progress_window is not None ):
-            self.progress_window.setParent(None)
+        ### GUI SECTION START ###
+        if( not visualize ):
+            pass
+        else:
+            if not QApplication.instance():
+                self.app = QApplication(sys.argv)
+            else:
+                self.app = QApplication.instance()     
+
+            self.main_window = SimWindow(self)
+            self.progress_window = None
+            self._reinit_progress_window()    
             
-        self.progress_window = SimulationOnGoingWindow(plot_func_ref=self.plot_last_result)
+        # program settings, containing:
+        # - info about last opened file
+        # for more, see SettingsField static class
+        self.settings = OrderedDict()
+        self._load_settings() # loading settings if they are exist
+        
+        # if there were last session, then we load the appropriate file
+        if( SETTINGS_FIELD.LAST_QDEV_FILE_OPENED in self.settings 
+           and self.settings[SETTINGS_FIELD.LAST_QDEV_FILE_OPENED] is not None ):
+            self.load_file(self.settings[SETTINGS_FIELD.LAST_QDEV_FILE_OPENED])            
+        ### GUI SECTION END ###
+        
+    def fill_SL_names(self):
+        self.SL_attributes_names = ["visualize",
+                                    "scheme",
+                                    "cooperN",
+                                    "simulation_datasets"]
+        self.SL_children_names = ["main_window"]
     
     def cancel_calculation(self):
         self.calculation_cancelled = True
@@ -103,7 +118,7 @@ class SchemeSimulator:
 
         # calculating the amount of points in parameters mesh
         iterations_n = 1
-        for leaf_node_sym in self.leafs:
+        for leaf_node_sym in self.leafs_current:
             if( var_kinds[leaf_node_sym] == VAR_KIND.SWEEP ):
                 # multiplying by the number of points in sweep interval
                 iterations_n *= var_settings[leaf_node_sym][2]
@@ -114,20 +129,20 @@ class SchemeSimulator:
         
         # constructing leaf mesh
         leaf_var_settings = OrderedDict()
-        for leaf_node_sym in self.leafs:
+        for leaf_node_sym in self.leafs_current:
             if( var_kinds[leaf_node_sym] == VAR_KIND.SWEEP ):
                 leaf_var_settings[leaf_node_sym] = np.linspace(*var_settings[leaf_node_sym])
             elif( var_kinds[leaf_node_sym] == VAR_KIND.FIXED ):
                 leaf_var_settings[leaf_node_sym] = [var_settings[leaf_node_sym]]
         
-        # in case where a visualization is present
+        # in case where a progress is present
         if( self.visualize is not None ):
             self.progress_window.show()
             self.progress_window.update_progress()
 
         # Cycling over leaf mesh and obtaining result.
         # Construction of dependent vars is made on the fly        
-        leaf_mesh = itertools.product(*[itertools.product([key],val) for key,val in leaf_var_settings.items()])
+        leaf_mesh = product(*[product([key],val) for key,val in leaf_var_settings.items()])
 
         # making sure that calculation is not cancelled yet
         self.calculation_cancelled = False        
@@ -216,10 +231,10 @@ class SchemeSimulator:
     def get_point_from_leaf_point(self,leaf_mesh_point,var_settings):
         vars_point = OrderedDict([(var.sym,var.val) for var in self.scheme.params.values()] )
         
-        last_filled_nodes = self.leafs
+        last_filled_nodes = self.leafs_current
         last_subs = OrderedDict([(sym,val) for sym,val in leaf_mesh_point])
         
-        equation_graph = self.parameters_consistent_graph.copy()
+        equation_graph = self.parameters_consistent_graph_current.copy()
         while( len(last_filled_nodes) > 0 ):
             new_filled_nodes = []
             new_subs = OrderedDict()
@@ -316,8 +331,8 @@ class SchemeSimulator:
                 else:
                     leaf_nodes.append(node_var_sym)    
                     
-        self.parameters_consistent_graph = equations_dependency_graph
-        self.leafs = leaf_nodes
+        self.parameters_consistent_graph_current = equations_dependency_graph
+        self.leafs_current = leaf_nodes
         return errors
     
     def find_eigensystem_internal(self,eigvals_N):
@@ -408,43 +423,134 @@ class SchemeSimulator:
         plt.grid()
         
         plt.show()
-
         
-### USEFULL OLD CODE THAT CAN BE USED IN THE FUTURE ###
-
-def array_coupling_from_parameters_lists(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,multiplier):
-    multiplier = 2*e*V_r0*beta/h # GHz
-    
-    g = []
-    
-    Evs, Engs = array_eins_from_params_lists(fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,2)
-    Evs = np.array(Evs)
-    
-    params = [fl_pts,E_C_pts,E_J_pts,Csh_pts,alpha_pts,cooper_N_pts,2]
-    lengths = []
-    for i, param in enumerate(params):
-        if( isinstance(param,list) ):
-            lengths.append(len(param))
-        elif( isinstance(param,np.ndarray) ):
-            lengths.append(param.shape[0])
-        else:
-            lengths.append(1)
+    ###### API SECTION START ######
+    ## GUI SECTION START ##
+    def GUI_loop(self):
+        '''
+        @description: launches application main window
+        '''
+        return self.app.exec_()
+        
+    def _reinit_progress_window(self):
+        if( not self.visualize ):
+            return
+        
+        if( self.progress_window is not None ):
+            self.progress_window.setParent(None)
             
-    max_len = max(lengths)
+        self.progress_window = SimulationOnGoingWindow(plot_func_ref=self.plot_last_result)
+    ## GUI SECTION END ##
     
-    for i,param in enumerate(params):
-        if( not isinstance(param,(list, np.ndarray)) ):
-            params[i] = itertools.repeat(param,max_len)
-        
-    iter_list = zip( *params )
+    ## SCHEME LOAD SECTION START ##
+    def import_netlist_handler(self):
+        file_name = QFileDialog.getOpenFileName(self.main_window,"Open File Name","netlist files","*.net")[0]
+        self.scheme = Scheme(file_path=file_name)
+        self.main_window.scheme = self.scheme
+        if( not self.main_window.gui_initialized ):
+            self.main_window.init_GUI()
+        else:
+            self.main_window.parameter_setup_widget.scheme_subscripts_changed_handler()
+    ## SCHEME LOAD SECTION END ##
     
-    for i, params in enumerate(iter_list):
-        N = params[5]
-        n1_op = qp.tensor(qp.charge(N),qp.identity(2*N+1))
-        n2_op = qp.tensor(qp.identity(2*N+1),qp.charge(N))
+    ## FILE SAVE SECTION START ##        
+    def save_file(self,filepath):
+        '''
+        @description: saves this simulator class state to drive
+        '''
+        dump_dict = self.return_save_dict()
+        self._preSave_unpicklable_refs_nullifier()
+        try:
+            with open(filepath,"wb") as file:
+                pickle.dump(dump_dict,file)
+        except FileNotFoundError:
+            return
+            
+        self.settings[SETTINGS_FIELD.LAST_QDEV_FILE_OPENED] = filepath
+        self._save_settings()
+        self._unpickable_refs_restorator() # to continue working with all links restored
+    
+    def _preSave_unpicklable_refs_nullifier(self):
+        '''
+        @description: ## FOR INTERNAL USAGE ##
+                Pre-save unserializable references nullifier.
+                Pickle.dump will return error if some of the object are containing
+            unserializable objects, like "simulator.progress_window" is widget and
+            hence not serializable.
+                Used in pair with "_afterLoad_unpickable_refs_restorator"
+            that restores all nullified references if possible.
+        @args: None
+        @return: None
+        '''
+        pass
         
-        vec0 = Evs[i,0]
-        vec1 = Evs[i,1]
-        g.append( multiplier*(n1_op-n2_op).matrix_element(vec0.dag(),vec1) )
-                 
-    return np.array(g)
+    def save_file_dialog(self):
+        '''
+        @description:   shows save file dialog and then invokes
+                        save_state_to_file(filename) with filename
+                        derived from dialog.
+        @return: None
+        '''
+        filepath = QFileDialog.getSaveFileName(self.main_window,"Open File Name","","*.qsch")[0]          
+        self.save_file(filepath)
+    ## FILE SAVE SECTION END ##
+        
+    ## FILE LOAD SECTION START ##
+    def load_file(self,filepath):
+        with open(filepath,"rb") as file:
+            load_dict = pickle.load(file)
+        print(load_dict)
+        self.load_from_dict_tree(load_dict)
+        self.transfer_internal_to_widget_tree()
+        self._unpickable_refs_restorator() 
+
+        if( not self.main_window.gui_initialized ):            
+            self.main_window.init_GUI()
+        
+        self.settings[SETTINGS_FIELD.LAST_QDEV_FILE_OPENED] = filepath
+        self._save_settings()
+        
+    def _unpickable_refs_restorator(self):
+        '''
+        @description: ## FOR INTERNAL USAGE ##
+                After-load unserializable references restoration.
+                Pickle.dump will return error if some of the object are containing
+            unserializable objects, like "simulator.progress_window" is widget and
+            hence not serializable. This function restores the unpicklable links
+            after load process is over.
+                Used in pair with "_preSave_unpicklable_refs_nullifier"
+            that nullifies corresponding references (set them to None).
+        @args: None
+        @return: None
+        '''
+        pass
+        
+    def load_file_dialog(self):
+        filepath = QFileDialog.getOpenFileName(self.main_window,"Open File Name","Qscheme files","*.qsch")[0]
+        self.file_load(filepath)
+    ## FILE LOAD SECTION START ##
+    
+    ## PROGRAM DATA ON DRIVE SECTION START ##
+    def _load_settings(self):
+        # if there is no such file or dir -> return
+        if( not os.path.exists(self.Qdev_settings_path) ):
+            return
+        
+        with open(self.Qdev_settings_path,"r") as file:
+            reader = csv.reader(file,delimiter='=')
+            for row in reader:
+                if( len(row) > 1 ):
+                    self.settings[row[0]] = row[1]
+        
+    def _save_settings(self):
+        # if there is no such dir, create it
+        if( not os.path.isdir(self.Qdev_folder_path) ):
+            os.mkdir(self.Qdev_folder_path)
+            
+        # open file, overriding previous content
+        with open(self.Qdev_settings_path,"w") as file:
+            writer = csv.writer(file,delimiter='=')
+            for key,val in self.settings.items():
+                writer.writerow([key,val])
+    ## PROGRAM DATA ON DRIVE SECTION END ##      
+    ###### API SECTION END ######

@@ -1,10 +1,10 @@
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 
-from .SLBase import SLBase
-from ..simulator.SchemeSimulator import SIM_SUBSYS,SIM_BASIS
+from .SLBase import SLBaseWidget
+from .._KEYHASHABLE import SIM_BASIS,SIM_SUBSYS
 
-class SimulationRegimeWidget(QtWidgets.QWidget,SLBase):
+class SimulationRegimeWidget(QtWidgets.QWidget,SLBaseWidget):
     
     def __init__(self, parent=None, flags=Qt.WindowFlags()):
         super(SimulationRegimeWidget,self).__init__(parent,flags)

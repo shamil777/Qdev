@@ -8,9 +8,6 @@ class SLBase():
         
     def fill_SL_names(self):
         raise NotImplementedError        
-            
-    def transfer_internal_to_widget(self):
-        raise NotImplementedError
 
     def transfer_internal_to_widget_tree(self):
         self.transfer_internal_to_widget()
@@ -32,4 +29,8 @@ class SLBase():
         for child_name in self.SL_children_names:
             child_dict[child_name] = getattr(self,child_name).return_save_dict()
         return dict(attrs_dict, **child_dict)
-            
+
+
+class SLBaseWidget(SLBase):
+    def transfer_internal_to_widget(self):
+        raise NotImplementedError
