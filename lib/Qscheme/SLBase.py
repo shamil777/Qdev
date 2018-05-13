@@ -7,12 +7,12 @@ class SLBase():
         self.SL_attributes_names = []
         
     def fill_SL_names(self):
-        raise NotImplementedError        
-
-    def transfer_internal_to_widget_tree(self):
-        self.transfer_internal_to_widget()
+        raise NotImplementedError
+        
+    def handle_loadData_tree(self):
         for child_name in self.SL_children_names:
-            getattr(self,child_name).transfer_internal_to_widget_tree()
+            getattr(self,child_name).handle_loadData_tree()
+        
     
     def load_from_dict_tree(self,loaded_attributes_dictionary):
         for name in self.SL_attributes_names:
@@ -34,3 +34,8 @@ class SLBase():
 class SLBaseWidget(SLBase):
     def transfer_internal_to_widget(self):
         raise NotImplementedError
+        
+    def handle_loadData_tree(self):
+        self.transfer_internal_to_widget()
+        for child_name in self.SL_children_names:
+            getattr(self,child_name).handle_loadData_tree()

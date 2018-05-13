@@ -3,7 +3,7 @@ from PyQt5.QtCore import Qt
 
 from collections import OrderedDict
 
-from .SLBase import SLBaseWidget
+from ..SLBase import SLBaseWidget
 
 class SubscriptsWidget(QtWidgets.QWidget,SLBaseWidget):
     def __init__(self, parent=None, flags=Qt.WindowFlags()):

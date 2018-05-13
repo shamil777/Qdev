@@ -3,7 +3,7 @@ from PyQt5.QtCore import Qt
 
 from collections import OrderedDict
 
-from .SLBase import SLBaseWidget
+from ..SLBase import SLBaseWidget
 from ..variables import Var
 from .._KEYHASHABLE import VAR_KIND
 
@@ -58,7 +58,7 @@ class VarsGridWidget(QtWidgets.QWidget,SLBaseWidget):
             return
         
         # if this row is empty (this is verified via the first item in row,
-        # because row is either fully filled either the whole row is nonEmpty )
+        # because row is either fully filled either the whole row is empty )
         # then no need to delete anything
         grid_label_object = self.grid_layout.itemAtPosition(row_i,0)
         if( grid_label_object is None ):
@@ -91,21 +91,24 @@ class VarsGridWidget(QtWidgets.QWidget,SLBaseWidget):
         for attr_name_SL in self.SL_attributes_names:
             del getattr(self,attr_name_SL)[var_sym]
             
-    def clear_grid_with_SL(self):
+    
+    def clear_widget_grid(self):
         for row_i in reversed(range(self.grid_layout.rowCount())):
             self.delete_row_save_SL(row_i)
+            
+    def clear_grid_with_SL(self):
+        self.clear_widget_grid()
         
         for attr_name_SL in self.SL_attributes_names:
             setattr(self,attr_name_SL,OrderedDict())
         
-    def reinit(self,var_list):
+    def reinit(self,var_sym_list):
         # clear all rows
-        
         self.clear_grid_with_SL()
             
-        for i,var in enumerate(var_list):
-            self.set_row_variable_with_SL(i,var.sym)
-        
+        for i,var_sym in enumerate(var_sym_list):
+            self.set_row_variable_with_SL(i,var_sym)
+            
         
     def set_row_variable_with_SL(self,row_i,var_sym):
         '''
@@ -117,7 +120,7 @@ class VarsGridWidget(QtWidgets.QWidget,SLBaseWidget):
                 Otherwise the row has default format and Save/Load structures are filled
             with default values.
                 If this row is already occupied with another variable,
-            this variable will be permamently deleted from all structures like it
+            the old variable will be permamently deleted from all structures like it
             had never existed.
             
         @arguments:
@@ -259,6 +262,9 @@ class ParametersSetupWidget(QtWidgets.QWidget,SLBaseWidget):
         super(ParametersSetupWidget,self).__init__(parent,flags)
         self.ref_to_parent = self.parent()
         
+        self.scheme_vars_grid = VarsGridWidget()
+        self.aux_vars_grid = VarsGridWidget()
+        
         self.fill_SL_names()        
     
     def fill_SL_names(self):
@@ -269,10 +275,6 @@ class ParametersSetupWidget(QtWidgets.QWidget,SLBaseWidget):
     def init_GUI(self):
         v_layout = QtWidgets.QVBoxLayout()
         self.setLayout(v_layout)
-        
-        vars_list = self.ref_to_parent.simulator.scheme.params
-        self.scheme_vars_grid = VarsGridWidget(vars_list)
-        self.aux_vars_grid = VarsGridWidget()
         
         ## adding 2 grid for scheme and auxillary variables
         v_layout.addWidget(self.scheme_vars_grid)

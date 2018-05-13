@@ -1,7 +1,7 @@
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 
-from .SLBase import SLBaseWidget
+from ..SLBase import SLBaseWidget
 from .._KEYHASHABLE import SIM_BASIS,SIM_SUBSYS
 
 class SimulationRegimeWidget(QtWidgets.QWidget,SLBaseWidget):
@@ -17,6 +17,23 @@ class SimulationRegimeWidget(QtWidgets.QWidget,SLBaseWidget):
         
         self.fill_SL_names()
         
+        self.subsys_comboBox = QtWidgets.QComboBox()
+        self.subsys_comboBox.addItems([SIM_SUBSYS.INTERNAL,
+                                       SIM_SUBSYS.COUPLING,
+                                       SIM_SUBSYS.WHOLE])
+        self.subsys_comboBox.currentIndexChanged.connect(self.subsys_comboBox_changed_handler)
+        self.subsys_comboBox_changed_handler()
+        
+        self.basis_comboBox = QtWidgets.QComboBox(self)
+        self.basis_comboBox.addItems([SIM_BASIS.COOPER,
+                                      SIM_BASIS.PHASE])
+        self.basis_comboBox.currentIndexChanged.connect(self.basis_comboBox_changed_handler)
+        self.basis_comboBox_changed_handler()
+        
+        self.cooper_N_LineEdit = QtWidgets.QLineEdit(self)
+        self.cooper_N_LineEdit.setText(str(self.cooperN))
+        self.cooper_N_LineEdit.editingFinished.connect(self.cooper_N_LineEdit_editing_finished)
+        
     def init_GUI(self):
         v_layout = QtWidgets.QVBoxLayout()
         v_layout.setAlignment(Qt.AlignTop)
@@ -31,25 +48,12 @@ class SimulationRegimeWidget(QtWidgets.QWidget,SLBaseWidget):
         subsys_comboBox_layout = QtWidgets.QHBoxLayout()
         
         subsys_label = QtWidgets.QLabel("subsystem: ",self)
-        self.subsys_comboBox = QtWidgets.QComboBox()
-        self.subsys_comboBox.addItems([SIM_SUBSYS.INTERNAL,
-                                       SIM_SUBSYS.COUPLING,
-                                       SIM_SUBSYS.WHOLE])
-        self.subsys_comboBox.currentIndexChanged.connect(self.subsys_comboBox_changed_handler)
-        self.subsys_comboBox_changed_handler()
-        
         subsys_comboBox_layout.addWidget(subsys_label)
         subsys_comboBox_layout.addWidget(self.subsys_comboBox)
         
         # 3rd from top
-        simType_hLayout = QtWidgets.QHBoxLayout()
-        
+        simType_hLayout = QtWidgets.QHBoxLayout()        
         basis_label = QtWidgets.QLabel("basis: ",self)
-        self.basis_comboBox = QtWidgets.QComboBox(self)
-        self.basis_comboBox.addItems([SIM_BASIS.COOPER,
-                                      SIM_BASIS.PHASE])
-        self.basis_comboBox.currentIndexChanged.connect(self.basis_comboBox_changed_handler)
-        self.basis_comboBox_changed_handler()
         
         simType_hLayout.addWidget(basis_label)
         simType_hLayout.addWidget(self.basis_comboBox)
@@ -59,10 +63,6 @@ class SimulationRegimeWidget(QtWidgets.QWidget,SLBaseWidget):
         
         cooper_N_label = QtWidgets.QLabel(self)
         cooper_N_label.setText("cooper pairs max")
-                
-        self.cooper_N_LineEdit = QtWidgets.QLineEdit(self)
-        self.cooper_N_LineEdit.setText(str(self.cooperN))
-        self.cooper_N_LineEdit.editingFinished.connect(self.cooper_N_LineEdit_editing_finished)
         
         cooper_N_hLayout.addWidget(cooper_N_label)
         cooper_N_hLayout.addWidget(self.cooper_N_LineEdit)

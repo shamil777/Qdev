@@ -17,7 +17,7 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import QFileDialog
 
 from .progressTimer import ProgressTimer
-from ..simDialog.SLBase import SLBase
+from ..SLBase import SLBase
 from ..variables import Var
 from ..schematic.Scheme import Scheme
 from ..simDialog import SimWindow
@@ -36,6 +36,7 @@ class SchemeSimulator(SLBase):
     simulation_basis_keywords = ["Node cooper pairs","Node phases"]
     
     def __init__(self, visualize=True, scheme=None ):
+        SLBase.__init__(self)
         self.fill_SL_names()
         
         self.visualize = visualize
@@ -47,7 +48,7 @@ class SchemeSimulator(SLBase):
         self.cooperN = 1
         self.completed = 0
         
-        self.simulation_datasets = pd.DataFrame(columns=["scheme_var_kinds","scheme_vars_settings",
+        self.simulation_datasets = pd.DataFrame(columns=["name","scheme_var_kinds","scheme_vars_settings",
                                                     "aux_var_kinds","aux_var_settings",
                                                     "simulation subsystem",
                                                     "simulation basis","simulation_basis_params","result"])
@@ -152,7 +153,9 @@ class SchemeSimulator(SLBase):
         self.progress_timer.start(iterations_n)
         
         result = []
-        
+        if( self.main_window.parameter_setup_widget.sim_name is None ):
+            pass # POP up window that shows that you ought to enter simulation name
+            
         for iter_idx,leaf_point in enumerate(leaf_mesh):
             # getting the rest parameter values by evaluating
             # variables in equation tree
@@ -186,7 +189,8 @@ class SchemeSimulator(SLBase):
             
         self.progress_window.plot_btn_activate()
         result = np.array(result)
-        res_dict = {"scheme_var_kinds":scheme_var_kinds,
+        res_dict = {"name":name
+                    "scheme_var_kinds":scheme_var_kinds,
                     "scheme_vars_settings":scheme_var_settings,
                     "aux_var_kinds":aux_var_kinds,
                     "aux_var_settings":aux_var_settings,
@@ -499,9 +503,9 @@ class SchemeSimulator(SLBase):
     def load_file(self,filepath):
         with open(filepath,"rb") as file:
             load_dict = pickle.load(file)
-        print(load_dict)
+
         self.load_from_dict_tree(load_dict)
-        self.transfer_internal_to_widget_tree()
+        self.handle_loadData_tree()
         self._unpickable_refs_restorator() 
 
         if( not self.main_window.gui_initialized ):            

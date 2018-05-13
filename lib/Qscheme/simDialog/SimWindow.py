@@ -8,10 +8,9 @@ from PyQt5.QtCore import Qt
 from .SubscriptsWidget import SubscriptsWidget
 from .SimulationRegimeWidget import SimulationRegimeWidget
 from .ParametersSetupWidget import ParametersSetupWidget
+from .SimulationDatasetsWidget import SimulationDatasetsWidget
 
-from .SLBase import SLBaseWidget
-
-
+from ..SLBase import SLBaseWidget
    
 
 class SimWindow(QMainWindow,SLBaseWidget):        
@@ -35,7 +34,8 @@ class SimWindow(QMainWindow,SLBaseWidget):
         ## MAIN WINDOW WIDGETS SECTION START ##
         self.subscripts_widget = SubscriptsWidget(self)
         self.simulation_regime_widget = SimulationRegimeWidget(self)
-        self.parameter_setup_widget = ParametersSetupWidget(self) 
+        self.parameter_setup_widget = ParametersSetupWidget(self)
+        self.simulation_datasets_widget = SimulationDatasetsWidget(self)
         ## MAIN WINDOW WIDGETS SECTION END
         
         # File menu item
@@ -73,7 +73,6 @@ class SimWindow(QMainWindow,SLBaseWidget):
         importMenu = mainMenu.addMenu("&Import")
         importMenu.addAction( importPADs )
 
-        self.init_GUI()
         self.show()       
     
     def init_GUI(self):        
@@ -82,14 +81,11 @@ class SimWindow(QMainWindow,SLBaseWidget):
         self.simulation_regime_widget.init_GUI()
         self.subscripts_widget.init_GUI()
         
-        v_layout = QVBoxLayout()
-        v_layout.setAlignment(Qt.AlignTop)
-        
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         
         central_v_layout = QVBoxLayout()
-        self.central_widget.setLayout(v_layout)        
+        self.central_widget.setLayout(central_v_layout)
         
         central_line1_h_layout = QHBoxLayout()
         
@@ -99,19 +95,14 @@ class SimWindow(QMainWindow,SLBaseWidget):
         
         central_v_layout.addWidget(self.parameter_setup_widget)
         
-        v_layout.addLayout(central_v_layout)
-        
         bottom_buttons_layout = QVBoxLayout()
         
         start_button = QPushButton("Start simulation",self)
         start_button.clicked.connect(self.start_button_clicked_handler)
-        visualize_button = QPushButton("Visualize",self)
-        visualize_button.clicked.connect(self.visualize_button_clicked_handler)
         
         bottom_buttons_layout.addWidget(start_button)
-        bottom_buttons_layout.addWidget(visualize_button)
         
-        v_layout.addLayout(bottom_buttons_layout)
+        central_v_layout.addLayout(bottom_buttons_layout)
          
         self.gui_initialized = True
 
@@ -127,9 +118,6 @@ class SimWindow(QMainWindow,SLBaseWidget):
                                 simulation_subsystem=self.simulation_regime_widget.subsystem_choice,
                                 simulation_basis=self.simulation_regime_widget.simulation_basis,
                                 cooper_N=self.simulation_regime_widget.cooperN)
-    
-    def visualize_button_clicked_handler(self):
-        self.simulator.plot_last_result()
     
     def fill_SL_names(self):
         self.SL_children_names = ["subscripts_widget",  
