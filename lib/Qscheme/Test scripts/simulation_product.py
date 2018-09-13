@@ -5,7 +5,7 @@ sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "\\..\\" )
 from collections import OrderedDict
 
 from Qscheme.simulator import SchemeSimulator
-from Qscheme.schematic import Scheme
+from Qscheme.Schematic import Scheme
 
 import numpy as np
 

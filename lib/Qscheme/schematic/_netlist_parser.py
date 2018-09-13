@@ -3,7 +3,7 @@ import csv
 
 import networkx as nx
 
-from Qscheme.schematic.elements import SIS_JJ, Cap, Battery, Resonator_V
+from Qscheme.Schematic.elements import SIS_JJ, Cap, Battery, Resonator_V
 
 def _get_refDes_groupNames_PADS( file_rows ):
     ''' 

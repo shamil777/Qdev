@@ -7,12 +7,14 @@ from ..SLBase import SLBaseWidget
 from ..variables import Var
 from .._KEYHASHABLE import VAR_KIND
 
+
 class SymNum_LineEdit(QtWidgets.QLineEdit):
     def __init__(self,var_sym=None,col_idx=0,parent=None):
         super(SymNum_LineEdit,self).__init__(parent)
         self.var_sym = var_sym
         self.col_idx = col_idx
-        
+
+
 class Sym_ComboBox(QtWidgets.QComboBox):
     def __init__(self,var_sym=None,row_i=None,parent=None):
         super(Sym_ComboBox,self).__init__(parent)
@@ -261,7 +263,7 @@ class ParametersSetupWidget(QtWidgets.QWidget,SLBaseWidget):
     def __init__(self, parent=None, flags=Qt.WindowFlags()):
         super(ParametersSetupWidget,self).__init__(parent,flags)
         self.ref_to_parent = self.parent()
-        
+        self.sim_name = None
         self.scheme_vars_grid = VarsGridWidget()
         self.aux_vars_grid = VarsGridWidget()
         

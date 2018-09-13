@@ -4,11 +4,7 @@ Created on Sat Oct 28 20:17:14 2017
 
 @author: user
 """
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "\\..\\" )
 
-import itertools
 from collections import OrderedDict
 
 import numpy as np
@@ -16,15 +12,12 @@ import sympy
 import networkx as nx
 
 import SI
-from Qscheme.schematic import _netlist_parser as nl
+from Qscheme.Schematic import _netlist_parser as nl
 import Qscheme.variables as vs
 
-from .elements import ExternalForceElement
-
-from IPython.display import display
 
 class Scheme():
-    def __init__(self,graph=None,file_path=None):
+    def __init__(self, graph=None, file_path=None):
         self.file_path = file_path
         self.graph = graph
         self.internal_scheme = None
@@ -37,7 +30,7 @@ class Scheme():
         self.ext_V_elements = OrderedDict()
         self.params = OrderedDict()
         
-        #### SYMBOLS AND VARIABLES DEFINITIONS START ####
+        # SYMBOLS AND VARIABLES DEFINITIONS START #
         self.Hc_sym_phase = None
         self.Hj_sym_phase = None
         self.Hc_sym_cooperN = None
@@ -47,7 +40,7 @@ class Scheme():
         self.H_external_sym_phase = None
         self.H_external_sym_cooperN = None
         self.C_matrix_sym = None
-        self.C_intermidiate_sym = None
+        self.C_intermediate_sym = None
         self.C_matrix_internal_sym = None
         
         self.nodes_marks_list = ["GND"] # first node is always ground node
@@ -391,7 +384,7 @@ class Scheme():
             l = ext_V_element.node1 - 1
             S_matrix += sympy.Matrix(N,N,lambda i,j: 1 if( i == k and j == l ) else 0)
             
-        self.C_intermidiate_sym = S_matrix.T*self.C_matrix_sym*S_matrix
+        self.C_intermediate_sym = S_matrix.T * self.C_matrix_sym * S_matrix
         
     
     def _construct_Cap_matrix_internal_sym_from_Cap_matrix_intermidiate_sym(self):

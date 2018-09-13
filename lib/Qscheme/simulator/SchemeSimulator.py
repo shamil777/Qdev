@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import QFileDialog
 from .progressTimer import ProgressTimer
 from ..SLBase import SLBase
 from ..variables import Var
-from ..schematic.Scheme import Scheme
+from ..Schematic.Scheme import Scheme
 from ..simDialog import SimWindow
 from ..simDialog.subWindows.SimulationOnGoing import SimulationOnGoingWindow
 from .._KEYHASHABLE import SETTINGS_FIELD,SIM_SUBSYS,SIM_BASIS,VAR_KIND,IDX
@@ -154,7 +154,7 @@ class SchemeSimulator(SLBase):
         
         result = []
         if( self.main_window.parameter_setup_widget.sim_name is None ):
-            pass # POP up window that shows that you ought to enter simulation name
+            pass # TODO: POP up window that shows that you ought to enter simulation name
             
         for iter_idx,leaf_point in enumerate(leaf_mesh):
             # getting the rest parameter values by evaluating
@@ -189,8 +189,9 @@ class SchemeSimulator(SLBase):
             
         self.progress_window.plot_btn_activate()
         result = np.array(result)
-        res_dict = {"name":name
-                    "scheme_var_kinds":scheme_var_kinds,
+        name = self.main_window.parameter_setup_widget.sim_name
+        res_dict = {"scheme_var_kinds":scheme_var_kinds,
+                    "simulation_name":name,
                     "scheme_vars_settings":scheme_var_settings,
                     "aux_var_kinds":aux_var_kinds,
                     "aux_var_settings":aux_var_settings,
@@ -531,7 +532,7 @@ class SchemeSimulator(SLBase):
         
     def load_file_dialog(self):
         filepath = QFileDialog.getOpenFileName(self.main_window,"Open File Name","Qscheme files","*.qsch")[0]
-        self.file_load(filepath)
+        self.load_file(filepath)
     ## FILE LOAD SECTION START ##
     
     ## PROGRAM DATA ON DRIVE SECTION START ##
