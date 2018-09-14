@@ -1,25 +1,26 @@
 sock = tcpip("localhost",30000,'NetworkRole', 'server');
 sock.InputBufferSize = 100000*8;
 
+status = rmdir(pwd + "\\Sonnet_projects",'s');
+if( status 
+status = rmdir(pwd + "\\sondata ",'s');
+
+proj = SonnetProject();
+proj.saveAs('Sonnet_projects/matlab_proj.son');
+
+proj.changeLengthUnit("UM");
+proj.changeDielectricLayerThickness(1,500);
+proj.changeDielectricLayerThickness(2,3000);
+
+metal_type_name = "Al-supercond";
+proj.defineNewResistorMetalType(metal_type_name,0);
+
+
 while 1
     % waiting for connection
     disp(get(sock,"Status"));
     fopen(sock);
     disp(get(sock,"Status"));
-    
-    status = rmdir(pwd + "\\Sonnet_projects",'s');
-    status = rmdir(pwd + "\\sondata ",'s');
-    status = mkdir( pwd + "\\Sonnet_projects");
-
-    proj = SonnetProject();
-    proj.saveAs( 'Sonnet_projects/matlab_proj.son');
-
-    proj.changeLengthUnit("UM");
-    proj.changeDielectricLayerThickness(1,500);
-    proj.changeDielectricLayerThickness(2,3000);
-
-    metal_type_name = "Al-supercond";
-    proj.defineNewResistorMetalType(metal_type_name,0);
     
     while 1
         data = fread(sock, 1,"uint16");
@@ -50,25 +51,26 @@ while 1
             proj.changeNumberOfCells(boxSettings.cells_X_num,boxSettings.cells_Y_num);
         elseif data == CMD.CLEAR_POLYGONS
             respond_ok(sock);
+            fprintf("CMD.CLEAR_POLYGONS received\n");
+            fprintf("%d polygons detected\n", length(proj.GeometryBlock.ArrayOfPolygons));
+            fprintf("%d ports detected\n", length(proj.GeometryBlock.ArrayOfPorts));
             for i = 1:length(proj.GeometryBlock.ArrayOfPolygons)
                 proj.deletePolygonUsingIndex(1);
             end
+            %for i = 1:length(proj.GeometryBlock.ArrayOfPorts);
+            %    proj.deletePortUsingIndex(1);
+            %end
+            fprintf("%d ports left after cleaning\n", length(proj.GeometryBlock.ArrayOfPorts));
         elseif data == CMD.SET_ABS
             respond_ok(sock);
             abs_params = receive_abs_parameters(sock);
             proj.addAbsFrequencySweep(abs_params.start_freq,abs_params.stop_freq);
         elseif data == CMD.SIMULATE
             respond_ok(sock);
-            % output csv file
-            % de-embeded data
-            % including comments
-            % with high precision
-            % S-data
-            % real-image data pairs
-            proj.addFileOutput("CSV","","D","Y","$BASENAME.csv","IC","Y","S","RI","R",50);
             proj.simulate('-c');
         end
     end
+    proj.save();
 end
 
 function respond_ok(sock)
