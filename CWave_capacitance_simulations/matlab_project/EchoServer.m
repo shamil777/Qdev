@@ -1,6 +1,8 @@
 sock = tcpip("localhost",30000,'NetworkRole', 'server');
 sock.InputBufferSize = 100000*8;
 
+DATA_FILENAME = "S_DATA.csv";
+
 while 1
     % waiting for connection
     disp(get(sock,"Status"));
@@ -23,6 +25,7 @@ while 1
     
     while 1
         data = fread(sock, 1,"uint16");
+        disp(data);
         if data == CMD.CLOSE
             respond_ok(sock);
             fclose(sock);
@@ -65,8 +68,10 @@ while 1
             % with high precision
             % S-data
             % real-image data pairs
-            proj.addFileOutput("CSV","","D","Y","$BASENAME.csv","IC","Y","S","RI","R",50);
+            proj.addFileOutput("CSV","D","Y",DATA_FILENAME,"IC","Y","S","RI","R",50);
             proj.simulate('-c');
+            % sending current working directory
+            fwrite(sock,pwd + "\" + DATA_FILENAME + newline);
         end
     end
 end
