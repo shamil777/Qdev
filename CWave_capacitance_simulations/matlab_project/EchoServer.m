@@ -2,6 +2,7 @@ sock = tcpip("localhost",30000,'NetworkRole', 'server');
 sock.InputBufferSize = 100000*8;
 
 DATA_FILENAME = "S_DATA.csv";
+SONNET_PROJ_DIRNAME = "Sonnet_projects";
 
 while 1
     % waiting for connection
@@ -9,10 +10,11 @@ while 1
     fopen(sock);
     disp(get(sock,"Status"));
     
-    status = rmdir(pwd + "\\Sonnet_projects",'s');
-    status = rmdir(pwd + "\\sondata ",'s');
-    status = mkdir( pwd + "\\Sonnet_projects");
-
+    % cleanup before previous run
+    status = rmdir(pwd + "\\" + SONNET_PROJ_DIRNAME,'s');
+    status = rmdir(pwd + "\\sondata",'s');
+    status = mkdir( pwd + "\\" + SONNET_PROJ_DIRNAME);
+    
     proj = SonnetProject();
     proj.saveAs( 'Sonnet_projects/matlab_proj.son');
 
@@ -22,10 +24,9 @@ while 1
 
     metal_type_name = "Al-supercond";
     proj.defineNewResistorMetalType(metal_type_name,0);
-    
+    csv_name = pwd + "\" + SONNET_PROJ_DIRNAME + "\" + DATA_FILENAME;
     while 1
         data = fread(sock, 1,"uint16");
-        disp(data);
         if data == CMD.CLOSE
             respond_ok(sock);
             fclose(sock);
@@ -71,7 +72,16 @@ while 1
             proj.addFileOutput("CSV","D","Y",DATA_FILENAME,"IC","Y","S","RI","R",50);
             proj.simulate('-c');
             % sending current working directory
-            fwrite(sock,pwd + "\" + DATA_FILENAME + newline);
+            
+            fwrite(sock,csv_name + newline);
+        elseif data == CMD.VISUALIZE
+            respond_ok(sock);
+            response_data = csvread(csv_name,8);
+            freq = response_data(:,1);
+            s21_re = response_data(:,4);
+            s21_im = response_data(:,5);
+            plot(freq,s21_re);
+            drawnow;
         end
     end
 end

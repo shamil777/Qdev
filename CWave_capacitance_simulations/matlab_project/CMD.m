@@ -9,5 +9,6 @@ classdef CMD < uint16
       CLEAR_POLYGONS(6)
       SET_ABS(7)
       SIMULATE(8)
+      VISUALIZE(9)
    end
 end
