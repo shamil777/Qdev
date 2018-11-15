@@ -1,3 +1,4 @@
+
 sock = tcpip("localhost",30000,'NetworkRole', 'server');
 sock.InputBufferSize = 100000*8;
 
@@ -9,6 +10,7 @@ while 1
     disp(get(sock,"Status"));
     fopen(sock);
     disp(get(sock,"Status"));
+    disp("");
     
     % cleanup before previous run
     status = rmdir(pwd + "\\" + SONNET_PROJ_DIRNAME,'s');
@@ -28,96 +30,96 @@ while 1
     while 1
         data = fread(sock, 1,"uint16");
         if data == CMD.CLOSE
-            respond_ok(sock);
+            respond( sock, RESPONSE.OK )
             fclose(sock);
             break
         elseif data == CMD.SAY_HELLO
-            respond_ok(sock);
+            respond( sock, RESPONSE.OK )
             disp("HELLO");
         elseif data == CMD.POLYGON
-            respond_ok(sock);
+            respond( sock, RESPONSE.OK )
             polygon = receive_polygon(sock);
             
             % ATOMIC EXPRESSION START
-            proj.addMetalPolygonEasy(0,polygon.points_x,polygon.points_y,1);
+            polygon_sonnet = proj.addMetalPolygonEasy(0,polygon.points_x,polygon.points_y,1);
             poly_idx = length(proj.GeometryBlock.ArrayOfPolygons);
             if polygon.ports == FLAG.TRUE
                 for i = transpose(polygon.port_edges_num_list)
-                    proj.addPortToPolygon(poly_idx,i);
+                    proj.addPortToPolygon(polygon_sonnet,i);
                 end
             end
             % ATOMIC EXPRESSION END
         elseif data == CMD.BOX_PROPS
-            respond_ok(sock);
+            respond( sock, RESPONSE.OK )
             boxSettings = receive_boxProps(sock);
             proj.changeBoxSizeXY(boxSettings.dim_X_um, boxSettings.dim_Y_um);
             proj.changeNumberOfCells(boxSettings.cells_X_num,boxSettings.cells_Y_num);
         elseif data == CMD.CLEAR_POLYGONS
-            respond_ok(sock);
+            respond( sock, RESPONSE.OK )
             for i = 1:length(proj.GeometryBlock.ArrayOfPolygons)
                 proj.deletePolygonUsingIndex(1);
             end
         elseif data == CMD.SET_ABS
-            respond_ok(sock);
+            respond( sock, RESPONSE.OK )
             abs_params = receive_abs_parameters(sock);
             proj.addAbsFrequencySweep(abs_params.start_freq,abs_params.stop_freq);
         elseif data == CMD.SIMULATE
-            respond_ok(sock);
+            respond( sock, RESPONSE.START_SIMULATION )
             % output csv file
             % de-embeded data
             % including comments
             % with high precision
             % S-data
-            % real-image data pairs
+            % real-imaginary complex number representation
             proj.addFileOutput("CSV","D","Y",DATA_FILENAME,"IC","Y","S","RI","R",50);
             proj.simulate('-c');
-            % sending current working directory
             
-            fwrite(sock,csv_name + newline);
+            % sending confirmation of the simulation end
+            respond( sock, RESPONSE.SIMULATION_FINISHED );
         elseif data == CMD.VISUALIZE
-            respond_ok(sock);
+            respond( sock, RESPONSE.OK )
             response_data = csvread(csv_name,8);
             freq = response_data(:,1);
             s21_re = response_data(:,4);
             s21_im = response_data(:,5);
-            plot(freq,s21_re);
+            plot(freq,20*log10(sqrt(s21_re.^2 + s21_im.^2)) );
             drawnow;
         end
     end
 end
 
-function respond_ok(sock)
-    fwrite(sock,RESPONSE.OK,"uint16");
+function respond(sock, response)
+    fwrite(sock,response,"uint16");
 end
 
 function result=receive_flag(sock)
     result = fread(sock,1,"uint16");
-    respond_ok(sock);
+    respond( sock, RESPONSE.OK )
 end
 
 function result=receive_uint32_x1(sock)
     result = fread(sock,1,"uint32");
-    respond_ok(sock);
+    respond( sock, RESPONSE.OK )
 end
 
 function result=receive_uint32_xnum(sock)
     num = receive_uint32_x1(sock);
     idxs_array = fread( sock, num, "uint32" );
-    respond_ok(sock);
+    respond( sock, RESPONSE.OK )
     
     result = idxs_array;
 end
 
 function result=receive_float64_x1(sock)
     result=fread(sock,1,"float64");
-    respond_ok(sock);
+    respond( sock, RESPONSE.OK )
 end 
 
 function result=receive_float64_xnum(sock)
     num = fread(sock,1,"uint32");
-    respond_ok(sock);
+    respond( sock, RESPONSE.OK )
     array_float = fread( sock, num, "float64" );
-    respond_ok(sock);
+    respond( sock, RESPONSE.OK )
     
     result = array_float;
 end
