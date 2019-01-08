@@ -64,7 +64,8 @@ while 1
             abs_params = receive_abs_parameters(sock);
             proj.addAbsFrequencySweep(abs_params.start_freq,abs_params.stop_freq);
         elseif data == CMD.SIMULATE
-            respond( sock, RESPONSE.START_SIMULATION )
+            respond( sock, RESPONSE.OK )
+            
             % output csv file
             % de-embeded data
             % including comments
@@ -73,9 +74,11 @@ while 1
             % real-imaginary complex number representation
             proj.addFileOutput("CSV","D","Y",DATA_FILENAME,"IC","Y","S","RI","R",50);
             proj.simulate('-c');
-            
             % sending confirmation of the simulation end
             respond( sock, RESPONSE.SIMULATION_FINISHED );
+            
+            % sending the name of the output file
+            fwrite(sock, csv_name + newline);
         elseif data == CMD.VISUALIZE
             respond( sock, RESPONSE.OK )
             response_data = csvread(csv_name,8);
