@@ -45,7 +45,13 @@ while 1
             poly_idx = length(proj.GeometryBlock.ArrayOfPolygons);
             if polygon.ports == FLAG.TRUE
                 for i = transpose(polygon.port_edges_num_list)
-                    proj.addPortToPolygon(polygon_sonnet,i);
+                    if polygon.port_types(i) == PORT_TYPES.BOX_WALL
+                        proj.addPort('STD',polygon_sonnet,i,50,0,0,0);
+                    elseif polygon.port_types(i) == PORT_TYPES.AUTOGROUNDED
+                        proj.addPort('AGND',polygon_sonnet,i,50,0,0,0,'FIX',0)
+                    elseif polygon.port_types(i) == PORT_TYPES.COCALIBRATED
+                        % not implemented
+                    end
                 end
             end
             % ATOMIC EXPRESSION END
@@ -100,6 +106,14 @@ function result=receive_flag(sock)
     respond( sock, RESPONSE.OK )
 end
 
+function result=receive_uint16_xnum(sock)
+    num = receive_uint32_x1(sock);
+    idxs_array = fread( sock, num, "uint16" );
+    respond( sock, RESPONSE.OK )
+    
+    result = idxs_array;
+end
+
 function result=receive_uint32_x1(sock)
     result = fread(sock,1,"uint32");
     respond( sock, RESPONSE.OK )
@@ -131,8 +145,9 @@ function result_poly=receive_polygon(sock)
     result_poly = Polygon();
     
     result_poly.ports = receive_flag(sock);
-    if result_poly.ports == FLAG.TRUE 
+    if result_poly.ports == FLAG.TRUE
         result_poly.port_edges_num_list = receive_uint32_xnum(sock);
+        result_poly.port_types = receive_uint16_xnum(sock);
     else
         result_poly.port_edges_num_list = -1;
     end
