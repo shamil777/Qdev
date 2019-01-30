@@ -44,11 +44,12 @@ while 1
             polygon_sonnet = proj.addMetalPolygonEasy(0,polygon.points_x,polygon.points_y,1);
             poly_idx = length(proj.GeometryBlock.ArrayOfPolygons);
             if polygon.ports == FLAG.TRUE
-                for i = transpose(polygon.port_edges_num_list)
+                for i = 1:length(polygon.port_edges_num_list)
+                    edge_i = polygon.port_edges_num_list(i);
                     if polygon.port_types(i) == PORT_TYPES.BOX_WALL
-                        proj.addPort('STD',polygon_sonnet,i,50,0,0,0);
+                        proj.addPort('STD',polygon_sonnet,edge_i,50,0,0,0);
                     elseif polygon.port_types(i) == PORT_TYPES.AUTOGROUNDED
-                        proj.addPort('AGND',polygon_sonnet,i,50,0,0,0,'FIX',0)
+                        proj.addPort('AGND',polygon_sonnet,edge_i,50,0,0,0,'FIX',0)
                     elseif polygon.port_types(i) == PORT_TYPES.COCALIBRATED
                         % not implemented
                     end
@@ -151,6 +152,8 @@ function result_poly=receive_polygon(sock)
     else
         result_poly.port_edges_num_list = -1;
     end
+    result_poly.port_edges_num_list = transpose(result_poly.port_edges_num_list);
+    result_poly.port_types = transpose(result_poly.port_types);
     
     result_poly.points_x = receive_float64_xnum(sock);
     result_poly.points_y = receive_float64_xnum(sock);
