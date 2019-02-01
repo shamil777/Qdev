@@ -6,6 +6,9 @@
 *.user
 *.sln.docstates
 
+# sonnet simulation
+CWave_capacitance_simulations/
+
 # pyCharm
 *.xml
 *.iml
