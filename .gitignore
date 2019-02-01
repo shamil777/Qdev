@@ -6,6 +6,12 @@
 *.user
 *.sln.docstates
 
+# pyCharm
+*.xml
+*.iml
+.idea/
+.idea/*
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
