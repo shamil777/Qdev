@@ -1,5 +1,0 @@
-After you actually drawn your schematic you should divide JJ in groups.
-To create a group of JJ, you should select all JJ that you wish to put in this group (via Shift key)
-after you rightclick on selection and choose "properties"
-then you change name to JosType[i] where i stay for group number (ommit bracket symbols)
-Then you go File->Export->NetList->PAD and save file with appropriate name
